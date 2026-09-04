@@ -1,6 +1,6 @@
 export type Topic={id:string; title:string; emoji:string; colour:string};
 export type Vocabulary={id:string; word:string; ipa:string; meaning:string; accepted:string[]; emoji:string};
-export type Target={vocabularyId:string; x:number;y:number;w:number;h:number};
+export type Target={vocabularyId:string; x:number;y:number;w:number;h:number;shape?:'rect'|'circle'|'ellipse'|'parallelogram'|'pill'};
 export type Scene={id:string;topicId:string;title:string;subtitle:string;targets:Target[]};
 export const topics:Topic[]=[
  {id:'kitchen',title:'Kitchen',emoji:'🍳',colour:'#f3b562'},{id:'airport',title:'Airport',emoji:'✈️',colour:'#8bb8d9'},
@@ -25,6 +25,7 @@ const centreOverrides:Record<string,Record<number,[number,number]>>={
  gym:{0:[.12,.35],1:[.85,.22],2:[.22,.70],3:[.12,.78],4:[.30,.55],5:[.72,.83],6:[.35,.18],7:[.62,.38],8:[.50,.10],9:[.38,.67]},
  underwater:{0:[.10,.40],1:[.52,.35],2:[.53,.62],3:[.65,.75],4:[.36,.57],5:[.89,.77],6:[.95,.18],7:[.78,.54],8:[.70,.10],9:[.53,.62]}
 };
- export const scenes:Scene[]=topics.flatMap((t)=>[1,2].map((n)=>({id:`${t.id}-${n}`,topicId:t.id,title:`${t.title} · Scene ${n}`,subtitle:n===1?'A first look around':'Look a little closer',targets:words.map((w,i)=>{const [x,y,wid,hei]=layouts[t.id][i];const [cx,cy]=centreOverrides[t.id]?.[i]??[x+wid/2,y+hei/2];return {vocabularyId:`${t.id}-${w}`,x:cx-Math.min(.11,Math.max(.04,wid*.45)),y:cy-Math.min(.14,Math.max(.05,hei*.45)),w:Math.min(.22,Math.max(.08,wid*.9)),h:Math.min(.28,Math.max(.10,hei*.9))};})})));
+ const shapes:Target['shape'][]=['rect','rect','parallelogram','parallelogram','pill','parallelogram','circle','ellipse','ellipse','parallelogram'];
+ export const scenes:Scene[]=topics.flatMap((t)=>[1,2].map((n)=>({id:`${t.id}-${n}`,topicId:t.id,title:`${t.title} · Scene ${n}`,subtitle:n===1?'A first look around':'Look a little closer',targets:words.map((w,i)=>{const [x,y,wid,hei]=layouts[t.id][i];const [cx,cy]=centreOverrides[t.id]?.[i]??[x+wid/2,y+hei/2];return {vocabularyId:`${t.id}-${w}`,x:cx-Math.min(.11,Math.max(.04,wid*.45)),y:cy-Math.min(.14,Math.max(.05,hei*.45)),w:Math.min(.22,Math.max(.08,wid*.9)),h:Math.min(.28,Math.max(.10,hei*.9)),shape:shapes[i]};})})));
 export const getTopic=(id:string)=>topics.find(t=>t.id===id);
 export const getScene=(id:string)=>scenes.find(s=>s.id===id);
