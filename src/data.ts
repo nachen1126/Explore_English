@@ -17,6 +17,7 @@ const layouts:Record<string,[number,number,number,number][]>={
  gym:[[.03,.08,.2,.55],[.75,.08,.25,.33],[.18,.58,.3,.18],[.02,.56,.2,.4],[.28,.44,.08,.25],[.6,.7,.3,.22],[.28,.1,.12,.15],[.56,.2,.18,.4],[.43,.0,.16,.18],[.3,.58,.18,.12]],
  underwater:[[.03,.08,.15,.7],[.18,.12,.65,.5],[.25,.52,.55,.2],[.53,.61,.22,.32],[.32,.48,.08,.2],[.83,.65,.14,.25],[.91,.1,.08,.17],[.72,.42,.15,.2],[.62,.0,.16,.17],[.47,.49,.15,.12]]
  };
- export const scenes:Scene[]=topics.flatMap((t)=>[1,2].map((n)=>({id:`${t.id}-${n}`,topicId:t.id,title:`${t.title} · Scene ${n}`,subtitle:n===1?'A first look around':'Look a little closer',targets:words.map((w,i)=>{const [x,y,wid,hei]=layouts[t.id][i];return {vocabularyId:`${t.id}-${w}`,x:x+wid/2-.05,y:y+hei/2-.06,w:.10,h:.12};})})));
+const centreOverrides:Record<string,Record<number,[number,number]>>={kitchen:{0:[.13,.42],1:[.55,.32],2:[.53,.72],3:[.83,.82],4:[.46,.68],5:[.61,.65],6:[.30,.20],7:[.31,.57],8:[.70,.15],9:[.70,.73]}};
+ export const scenes:Scene[]=topics.flatMap((t)=>[1,2].map((n)=>({id:`${t.id}-${n}`,topicId:t.id,title:`${t.title} · Scene ${n}`,subtitle:n===1?'A first look around':'Look a little closer',targets:words.map((w,i)=>{const [x,y,wid,hei]=layouts[t.id][i];const [cx,cy]=centreOverrides[t.id]?.[i]??[x+wid/2,y+hei/2];return {vocabularyId:`${t.id}-${w}`,x:cx-.05,y:cy-.06,w:.10,h:.12};})})));
 export const getTopic=(id:string)=>topics.find(t=>t.id===id);
 export const getScene=(id:string)=>scenes.find(s=>s.id===id);
