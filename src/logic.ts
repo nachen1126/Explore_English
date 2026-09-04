@@ -1,0 +1,12 @@
+import type {Scene} from './data';
+export type WordProgress={discoveredCount:number;findCorrect:number;findIncorrect:number;sayCorrect:number;sayIncorrect:number;lastPractised?:string;needsPractice:boolean};
+export type State={words:Record<string,WordProgress>;scenes:Record<string,{explored:string[];completed:boolean;challengeCompleted:boolean;lastVisited:number}>};
+export const emptyProgress=():WordProgress=>({discoveredCount:0,findCorrect:0,findIncorrect:0,sayCorrect:0,sayIncorrect:0,needsPractice:false});
+export const normalize=(s:string)=>s.toLowerCase().replace(/[.,!?']/g,'').replace(/\s+/g,' ').trim();
+export const matches=(answer:string,accepted:string[])=>accepted.some(a=>normalize(a)===normalize(answer));
+export const needsPractice=(p:WordProgress)=>p.findIncorrect+p.sayIncorrect>p.findCorrect+p.sayCorrect || (p.findIncorrect+p.sayIncorrect>0 && p.findCorrect+p.sayCorrect===0);
+export const scoreScene=(scene:Scene,state:State,current:string)=>{const score=scene.targets.reduce((n,t)=>n+(state.words[t.vocabularyId]?.needsPractice?8:0)+(state.words[t.vocabularyId]?.discoveredCount?0:2),0);return score+(scene.id===current?-20:0)-(state.scenes[scene.id]?.lastVisited&&Date.now()-state.scenes[scene.id].lastVisited<60000?4:0);};
+export const recommend=(topicId:string,scenes:Scene[],state:State,current:string)=>scenes.filter(s=>s.topicId===topicId).sort((a,b)=>scoreScene(b,state,current)-scoreScene(a,state,current))[0];
+const KEY='explore-english-v1';
+export const load=():State=>{try{return JSON.parse(localStorage.getItem(KEY)||'{"words":{},"scenes":{}}')}catch{return {words:{},scenes:{}}}};
+export const save=(s:State)=>{try{localStorage.setItem(KEY,JSON.stringify(s))}catch{/* storage unavailable */}};
