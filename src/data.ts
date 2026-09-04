@@ -26,6 +26,6 @@ const centreOverrides:Record<string,Record<number,[number,number]>>={
  underwater:{0:[.10,.40],1:[.52,.35],2:[.53,.62],3:[.65,.75],4:[.36,.57],5:[.89,.77],6:[.95,.18],7:[.78,.54],8:[.70,.10],9:[.53,.62]}
 };
  const shapes:Target['shape'][]=['rect','rect','parallelogram','organic','pill','organic','circle','ellipse','ellipse','parallelogram'];
- export const scenes:Scene[]=topics.flatMap((t)=>[1,2,3,4,5].map((n)=>({id:`${t.id}-${n}`,topicId:t.id,title:`${t.title} · Scene ${n}`,subtitle:n===1?'A first look around':n===2?'Look a little closer':'A new place to explore',targets:words.map((w,i)=>{const [x,y,wid,hei]=layouts[t.id][i];const [cx,cy]=centreOverrides[t.id]?.[i]??[x+wid/2,y+hei/2];return {vocabularyId:`${t.id}-${w}`,x:cx-Math.min(.11,Math.max(.04,wid*.45)),y:cy-Math.min(.14,Math.max(.05,hei*.45)),w:Math.min(.22,Math.max(.08,wid*.9)),h:Math.min(.28,Math.max(.10,hei*.9)),shape:shapes[i]};})})));
+ export const scenes:Scene[]=topics.flatMap((t)=>[1,2].map((n)=>({id:`${t.id}-${n}`,topicId:t.id,title:`${t.title} · Scene ${n}`,subtitle:n===1?'A first look around':'Look a little closer',targets:words.map((w,i)=>{const [x,y,wid,hei]=layouts[t.id][i];const [cx,cy]=centreOverrides[t.id]?.[i]??[x+wid/2,y+hei/2];return {vocabularyId:`${t.id}-${w}`,x:cx-Math.min(.11,Math.max(.04,wid*.45)),y:cy-Math.min(.14,Math.max(.05,hei*.45)),w:Math.min(.22,Math.max(.08,wid*.9)),h:Math.min(.28,Math.max(.10,hei*.9)),shape:shapes[i]};})})));
 export const getTopic=(id:string)=>topics.find(t=>t.id===id);
 export const getScene=(id:string)=>scenes.find(s=>s.id===id);
