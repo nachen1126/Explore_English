@@ -1,6 +1,6 @@
 import type {Scene} from './data';
 export type WordProgress={discoveredCount:number;findCorrect:number;findIncorrect:number;sayCorrect:number;sayIncorrect:number;lastPractised?:string;needsPractice:boolean};
-export type State={words:Record<string,WordProgress>;scenes:Record<string,{explored:string[];completed:boolean;challengeCompleted:boolean;lastVisited:number}>};
+export type State={words:Record<string,WordProgress>;scenes:Record<string,{explored:string[];completed:boolean;challengeCompleted:boolean;lastVisited:number;challengeScore?:number;challengeTotal?:number}>};
 export const emptyProgress=():WordProgress=>({discoveredCount:0,findCorrect:0,findIncorrect:0,sayCorrect:0,sayIncorrect:0,needsPractice:false});
 export const normalize=(s:string)=>s.toLowerCase().replace(/[.,!?']/g,'').replace(/\s+/g,' ').trim();
 export const matches=(answer:string,accepted:string[])=>accepted.some(a=>normalize(a)===normalize(answer));
