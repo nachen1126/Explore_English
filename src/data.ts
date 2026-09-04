@@ -9,6 +9,10 @@ export const topics:Topic[]=[
 const words=['door','window','table','chair','bottle','bag','clock','plant','light','book'];
 export const vocabulary:Record<string,Vocabulary>={};
 topics.forEach((t)=>words.forEach((w,i)=>{const id=`${t.id}-${w}`; vocabulary[id]={id,word:w,ipa:`/${w}/`,meaning:['门','窗户','桌子','椅子','瓶子','包','时钟','植物','灯','书'][i],accepted:[w,`a ${w}`,`it's a ${w}`,`it is a ${w}`],emoji:['🚪','🪟','🪑','🪑','🧴','👜','🕒','🪴','💡','📖'][i]};}));
+const underwaterWords=['whale','shark','fish','turtle','octopus','crab','seahorse','jellyfish','lobster','shrimp'];
+const underwaterMeanings=['鲸鱼','鲨鱼','鱼','海龟','章鱼','螃蟹','海马','水母','龙虾','虾'];
+underwaterWords.forEach((w,i)=>{const id=`underwater-${w}`;vocabulary[id]={id,word:w,ipa:`/${w}/`,meaning:underwaterMeanings[i],accepted:[w,`a ${w}`,`it's a ${w}`,`it is a ${w}`],emoji:'🐠'};});
+const sceneWords=(topicId:string,n:number)=>topicId==='underwater'&&n===1?underwaterWords:words;
 const layouts:Record<string,[number,number,number,number][]>={
  kitchen:[[.03,.1,.2,.65],[.48,.08,.2,.3],[.32,.58,.55,.3],[.72,.65,.2,.3],[.45,.52,.08,.25],[.54,.5,.16,.25],[.25,.08,.1,.16],[.25,.35,.16,.32],[.65,.03,.14,.2],[.64,.65,.15,.12]],
  airport:[[.02,.08,.18,.65],[.68,.1,.28,.45],[.33,.58,.42,.2],[.7,.58,.28,.38],[.5,.52,.08,.2],[.57,.48,.17,.18],[.27,.1,.12,.15],[.25,.28,.2,.45],[.44,.02,.18,.2],[.36,.59,.18,.1]],
@@ -26,6 +30,7 @@ const centreOverrides:Record<string,Record<number,[number,number]>>={
  underwater:{0:[.10,.40],1:[.52,.35],2:[.53,.62],3:[.65,.75],4:[.36,.57],5:[.89,.77],6:[.95,.18],7:[.78,.54],8:[.70,.10],9:[.53,.62]}
 };
  const shapes:Target['shape'][]=['rect','rect','parallelogram','organic','pill','organic','circle','ellipse','ellipse','parallelogram'];
- export const scenes:Scene[]=topics.flatMap((t)=>[1,2].map((n)=>({id:`${t.id}-${n}`,topicId:t.id,title:`${t.title} · Scene ${n}`,subtitle:n===1?'A first look around':'Look a little closer',targets:words.map((w,i)=>{const [x,y,wid,hei]=layouts[t.id][i];const [cx,cy]=centreOverrides[t.id]?.[i]??[x+wid/2,y+hei/2];return {vocabularyId:`${t.id}-${w}`,x:cx-Math.min(.11,Math.max(.04,wid*.45)),y:cy-Math.min(.14,Math.max(.05,hei*.45)),w:Math.min(.22,Math.max(.08,wid*.9)),h:Math.min(.28,Math.max(.10,hei*.9)),shape:shapes[i]};})})));
+ const underwaterStandardCenters:[[number,number],[number,number],[number,number],[number,number],[number,number],[number,number],[number,number],[number,number],[number,number],[number,number]]=[[.18,.18],[.43,.16],[.43,.34],[.70,.43],[.27,.69],[.78,.78],[.61,.77],[.83,.84],[.12,.78],[.31,.86]];
+ export const scenes:Scene[]=topics.flatMap((t)=>[1,2].map((n)=>({id:`${t.id}-${n}`,topicId:t.id,title:`${t.title} · Scene ${n}`,subtitle:n===1?'A first look around':'Look a little closer',targets:sceneWords(t.id,n).map((w,i)=>{const [x,y,wid,hei]=layouts[t.id][i];const [cx,cy]=t.id==='underwater'&&n===1?underwaterStandardCenters[i]:(centreOverrides[t.id]?.[i]??[x+wid/2,y+hei/2]);return {vocabularyId:`${t.id}-${w}`,x:cx-Math.min(.11,Math.max(.04,wid*.45)),y:cy-Math.min(.14,Math.max(.05,hei*.45)),w:Math.min(.22,Math.max(.08,wid*.9)),h:Math.min(.28,Math.max(.10,hei*.9)),shape:shapes[i]};})})));
 export const getTopic=(id:string)=>topics.find(t=>t.id===id);
 export const getScene=(id:string)=>scenes.find(s=>s.id===id);

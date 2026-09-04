@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';import{createRoot}from'react-dom/client';import{topics,scenes,vocabulary,getScene,getTopic}from'./data';import{emptyProgress,load,matches,needsPractice,recommend,save,type State}from'./logic';import kitchen from './assets/scenes/kitchen.png';import airport from './assets/scenes/airport.png';import supermarket from './assets/scenes/supermarket.png';import cafe from './assets/scenes/cafe.png';import gym from './assets/scenes/gym.png';import underwater from './assets/scenes/underwater.png';import'./styles.css';import'./scene-images.css';
-const sceneImages:Record<string,string>={kitchen,airport,supermarket,cafe,gym,underwater};
+import underwaterStandard from './assets/scenes/underwater-standard.png';
+const sceneImages:any={kitchen,airport,supermarket,cafe,gym,underwater};Object.defineProperty(sceneImages,'underwater',{get:()=>location.hash.includes('/underwater-1')?underwaterStandard:underwater});
 import './challenge-tracker';
 let previousRoute='__uninitialized__';
 const speak=(word:string)=>{if('speechSynthesis'in window){const u=new SpeechSynthesisUtterance(word);u.lang='en-GB';const voice=window.speechSynthesis.getVoices().find(v=>v.lang.toLowerCase().startsWith('en-gb'));if(voice)u.voice=voice;window.speechSynthesis.cancel();window.setTimeout(()=>window.speechSynthesis.speak(u),20)}};
