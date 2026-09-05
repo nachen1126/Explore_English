@@ -1,52 +1,64 @@
 # Explore English
 
-A mobile-first visual scene English learning app: choose a place, discover vocabulary, hear British English, then complete Find It and Say It challenges.
+Learn useful English through illustrated places: choose a scene, discover every object, then complete a Find It / Say It or Type It challenge and review your first-answer result.
 
-## Product flow
+Live: [Explore English on GitHub Pages](https://nachen1126.github.io/Explore_English/#/)
 
-Home → Scene exploration (10 normalized hotspots) → Find It → Say It → Result → same-topic recommendation.
+## Development
 
-## Architecture
+Node.js 22.12+ (CI uses Node 22). All npm dependencies are pinned in package.json and package-lock.json.
 
-React + TypeScript + Vite SPA. `src/data.ts` contains topics, scenes, vocabulary and normalized hotspot coordinates. `src/logic.ts` owns answer matching, progress, persistence and recommendations. `src/main.tsx` provides the focused screens and browser speech services. Hash routing keeps GitHub Pages refresh-safe.
-
-## Docker development
-
-Requires Docker Desktop only:
-
-```bash
-docker compose up --build
-docker compose down
-docker compose run --rm web npm test
-docker compose down --rmi local --volumes
+```sh
+npm ci
+npm run dev
 ```
 
-The production container is served at `http://localhost:8080`.
+The Vite base is `/Explore_English/`. Use the exact URL printed by Vite. Hash routes remain refresh-safe on GitHub Pages.
 
-## Testing and build
+## Required checks
 
-```bash
-npm install
+Run in order:
+
+```sh
+npm ci
 npm run lint
 npm run typecheck
 npm test
 npm run build
 ```
 
-CI runs these checks on pushes and pull requests. The deploy workflow builds and publishes `dist` to GitHub Pages after a successful build. Enable Pages once in repository Settings → Pages → Source: GitHub Actions.
+CI and the existing Pages workflow run this chain. A successful push to main publishes the validated dist through GitHub Actions. Pull requests run CI without publishing.
 
-## Content and hotspots
+## Available content
 
-Add a `Topic`, then add one or more `Scene` entries. Each target references a `Vocabulary` id and uses `x`, `y`, `w`, `h` values from 0 to 1, so responsive images remain clickable. Vocabulary includes British IPA, Chinese meaning, accepted answers and a speech word.
+Kitchen, Supermarket, Airport and Gym each have 10 independently audited words/hotspots. They use **clearly marked development artwork**. Final artwork has not been supplied; development image proportions are preserved without cropping. All remaining planned topics are unpublished. There is no duplicate Scene 2.
 
-## Audio and speech
+- [Full image briefs and missing asset list](docs/scene-asset-spec.md)
+- [Architecture, data model and storage migration](docs/architecture.md)
+- [Baseline audit and removed implementations](docs/refactor-audit.md)
+- [Acceptance and browser verification](docs/validation.md)
 
-Pronunciation uses browser `SpeechSynthesis` with `en-GB`. Say It uses `SpeechRecognition`/`webkitSpeechRecognition` when available, with a typed-answer fallback. No recordings or personal data are stored.
+## Content workflow
 
-## Persistence
+Add an independent scene and vocabulary record in `src/content.ts`, not a generic word template. Final images must be 1536×1024 and optimized WebP/AVIF under 500 KB. The optional image converter uses Pillow:
 
-Learning records are serialized under `localStorage` key `explore-english-v1`. Clear it in browser devtools to reset progress. Corrupt storage safely falls back to an empty state.
+```sh
+python -m pip install -r requirements-assets.txt
+python scripts/prepare-scene.py supplied.png public/scenes/kitchen-01.webp
+```
 
-## Limitations and future
+A development-only hotspot editor displays names, bounds, centres and normalized clicks, previews draft geometry, and exports JSON. It is excluded from production. Follow the asset brief before setting published to true.
 
-Demo scene art is deterministic CSS illustration rather than generated imagery. V1 has no accounts, backend sync or cloud TTS; these can be added behind the existing services and data boundaries.
+## Progress and audio
+
+React state persists discoveries and complete challenge attempts under `explore-english-v2`, schemaVersion 2. Known legacy discoveries migrate safely; unreliable legacy scores do not. Restart asks for confirmation. Progress remains local to this browser.
+
+Speech synthesis requests British English. Speech recognition is optional and browser-dependent; typed answers are always supported. Recordings are not stored.
+
+## Docker
+
+```sh
+docker compose up --build
+```
+
+The production container serves port 8080. CI also verifies the Docker build.
