@@ -1,5 +1,7 @@
 # Validation record — 2026-09-05
 
+This is the historical refactor validation. For the current category, Enter, hint, automatic Find and speech changes, see [the 2026-09-06 validation record](interaction-validation.md).
+
 ## Local required checks
 
 Completed in the requested order with exit code 0:

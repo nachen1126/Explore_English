@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { assembleScenes, categories, scenes, topics, publishedScenes, vocabulary } from '../data';
+import { assembleScenes, categories, getCategoryScenes, getSceneCategory, scenes, topics, publishedScenes, vocabulary } from '../data';
 import { hotspotStyle, normalizePoint } from '../scene-geometry';
 
 describe('publication contract', () => {
@@ -11,11 +11,22 @@ describe('publication contract', () => {
     const result = assembleScenes([first, second], topics);
     expect(result.filter(scene => scene.topicId === first.topicId)).toEqual([first, second]);
   });
-  it('supports all six categories and 28 planned topics, with Café under Food & Shopping', () => {
-    expect(categories).toHaveLength(6);
-    expect(topics).toHaveLength(28);
-    expect(topics.find(topic => topic.id === 'cafe')?.categoryId).toBe('food-shopping');
+  it('groups existing and planned topics into bilingual categories without publishing drafts', () => {
+    expect(categories).toHaveLength(8);
+    expect(topics).toHaveLength(38);
+    expect(topics.find(topic => topic.id === 'cafe')?.categoryId).toBe('food-dining');
+    expect(topics.find(topic => topic.id === 'kitchen')?.categoryId).toBe('food-dining');
+    expect(topics.find(topic => topic.id === 'gym')?.categoryId).toBe('sports-fitness');
     expect(categories.find(category => category.title === 'Café')).toBeUndefined();
+    expect(categories.every(category => category.chineseTitle.length > 0)).toBe(true);
+    expect(new Set(topics.map(topic => topic.id)).size).toBe(topics.length);
+    expect(getCategoryScenes('sports-fitness').map(scene => scene.id)).toEqual(['gym-1']);
+    expect(getCategoryScenes('food-dining').map(scene => scene.id).sort()).toEqual(['kitchen-1', 'supermarket-1']);
+    expect(getCategoryScenes('beauty-personal-care')).toEqual([]);
+    expect(getCategoryScenes('animals')).toEqual([]);
+    expect(getCategoryScenes('unknown')).toEqual([]);
+    expect(publishedScenes).toHaveLength(4);
+    publishedScenes.forEach(scene => expect(getSceneCategory(scene)).toBeDefined());
   });
   it('publishes only complete independent scene records and real optimised assets', () => {
     const hashes = new Set();

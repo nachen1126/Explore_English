@@ -1,12 +1,14 @@
 export interface Category {
   id: string;
   title: string;
+  chineseTitle: string;
   description: string;
 }
 export interface Topic {
   id: string;
   categoryId: string;
   title: string;
+  chineseTitle?: string;
 }
 export interface VocabularyItem {
   id: string;
@@ -52,12 +54,15 @@ export interface AnswerRecord {
   correct: boolean;
   at: number;
   source: 'hotspot' | 'typing' | 'speech';
+  recognitionId?: string;
 }
 export interface ChallengeQuestion {
   id: string;
   vocabularyId: string;
   mode: QuestionMode;
   answers: AnswerRecord[];
+  /** An assisted completion is never a correct answer or a mastery point. */
+  revealedAt?: number;
 }
 export interface ChallengeAttempt {
   id: string;

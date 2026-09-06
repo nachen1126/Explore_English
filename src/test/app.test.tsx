@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -39,6 +39,7 @@ describe('exploration interaction', () => {
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('region', { name: 'Word card: door' })).toBeVisible();
     await user.click(screen.getByRole('link', { name: 'Explore English home' }));
+    await user.click(screen.getByRole('link', { name: '饮食篇 · Food & Dining' }));
     await user.click(screen.getByRole('link', { name: 'Kitchen · Continue' }));
     expect(screen.getByRole('progressbar', { name: 'Exploration progress' })).toHaveAttribute('value', '1');
     page.unmount();
@@ -66,7 +67,7 @@ describe('exploration interaction', () => {
     for (const id of scene.vocabularyIds) await user.click(screen.getByRole('button', { name: `Explore ${vocabulary[id].word}` }));
     expect(screen.getByRole('heading', { name: 'You found them all!' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Review Words' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Back to Topics' })).toBeVisible();
+    expect(screen.getByRole('link', { name: '返回本分类 · Category' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: /Start Challenge/ }));
     expect(screen.getByRole('heading', { name: /^Find the/ })).toBeVisible();
     await user.click(screen.getByRole('link', { name: '← Back to scene' }));
@@ -105,7 +106,8 @@ describe('challenge journey', () => {
         await user.click(screen.getByRole('button', { name: 'Check answer' }));
       }
       expect(screen.getByText('Correct.')).toBeVisible();
-      await user.click(screen.getByRole('button', { name: index === 9 ? 'See results →' : 'Next word →' }));
+      if (question.mode === 'find') await waitFor(() => expect(screen.getByText(`${index + 2} / 10`)).toBeVisible());
+      else await user.click(screen.getByRole('button', { name: index === 9 ? 'See results →' : 'Next word →' }));
     }
     expect(screen.getByText('90%')).toBeVisible();
     expect(summarize(loadState(scenes).state.attempts[attempt.id]).score).toBe(9);
@@ -162,9 +164,9 @@ describe('results and navigation', () => {
   it('12–13. corrupt saved data and unpublished routes cannot blank the app or publish drafts', () => {
     localStorage.setItem(STORAGE_KEY, '{broken');
     const page = mount('/');
-    expect(screen.getByRole('heading', { name: 'Where do you want to go?' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Choose your world/ })).toBeVisible();
     const main = screen.getByRole('main');
-    expect(within(main).getAllByRole('link')).toHaveLength(4);
+    expect(within(main).getAllByRole('link')).toHaveLength(8);
     expect(within(main).queryByRole('link', { name: /Café|Underwater|Living Room/ })).not.toBeInTheDocument();
     page.unmount();
     mount('/scene/cafe-1');
@@ -179,7 +181,7 @@ describe('results and navigation', () => {
     mount('/');
     await user.click(screen.getByRole('link', { name: 'Skip to content' }));
     expect(screen.getByRole('main')).toHaveFocus();
-    expect(screen.getByRole('heading', { name: 'Where do you want to go?' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Choose your world/ })).toBeVisible();
   });
   it('future schema data is left untouched by a mounted app', () => {
     const payload = '{"schemaVersion":999,"scenes":{},"attempts":{}}';
@@ -191,6 +193,6 @@ describe('results and navigation', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
     mount('/');
     expect(screen.getByRole('status')).toHaveTextContent('cannot save progress');
-    expect(screen.getByRole('heading', { name: 'Where do you want to go?' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Choose your world/ })).toBeVisible();
   });
 });

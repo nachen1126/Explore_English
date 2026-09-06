@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { scenes, publishedScenes, vocabulary } from '../data';
-import { createAttempt, currentQuestion, emptyState, learningReducer, LEGACY_KEY, loadState, matches, recommendNext, saveState, STORAGE_KEY, summarize, weakVocabulary } from '../logic';
+import { createAttempt, currentQuestion, emptyState, hasHint, isSolved, learningReducer, LEGACY_KEY, loadState, matches, recommendNext, saveState, STORAGE_KEY, summarize, weakVocabulary } from '../logic';
 import type { LearningState } from '../types';
 
 const scene = publishedScenes[0];
@@ -126,6 +126,53 @@ describe('safe continuation', () => {
   });
 });
 describe('storage validation', () => {
+  it('preserves a pre-category v2 attempt and discoveries without needing a category migration', () => {
+    const attempt = createAttempt(scene);
+    const state = { ...emptyState(), scenes: { [scene.id]: { explored: [scene.vocabularyIds[0]], lastVisited: 1 } }, attempts: { [attempt.id]: attempt } };
+    saveState(state);
+    expect(loadState(scenes).state).toEqual(state);
+    expect(loadState(scenes).notice).toBeNull();
+  });
+  it('persists assisted completion and cannot turn a revealed answer into mastery', () => {
+    const attempt = createAttempt(scene, [scene.vocabularyIds[0]], 'weak');
+    attempt.questions[0].mode = 'produce';
+    const q = attempt.questions[0];
+    let state = learningReducer(emptyState(), { type: 'start', attempt });
+    expect(learningReducer(state, { type: 'reveal', attemptId: attempt.id, questionId: q.id, at: 1 })).toBe(state);
+    for (let i = 0; i < 3; i++) state = learningReducer(state, { type: 'answer', attemptId: attempt.id, questionId: q.id,
+      record: { answer: 'wrong', correct: false, at: i + 1, source: i === 1 ? 'speech' : 'typing', ...(i === 1 ? { recognitionId: 'recording-1' } : {}) } });
+    expect(hasHint(state.attempts[attempt.id].questions[0])).toBe(true);
+    state = learningReducer(state, { type: 'reveal', attemptId: attempt.id, questionId: q.id, at: 4 });
+    expect(isSolved(state.attempts[attempt.id].questions[0])).toBe(true);
+    expect(state.attempts[attempt.id].completedAt).toBe(4);
+    const lateCorrect = learningReducer(state, { type: 'answer', attemptId: attempt.id, questionId: q.id,
+      record: { answer: vocabulary[q.vocabularyId].word, correct: true, at: 5, source: 'typing' } });
+    expect(lateCorrect).toBe(state);
+    saveState(state);
+    expect(loadState(scenes).state).toEqual(state);
+    expect(summarize(loadState(scenes).state.attempts[attempt.id])).toMatchObject({ score: 0, remembered: [], weak: [q.vocabularyId] });
+    expect(weakVocabulary(loadState(scenes).state)).toEqual([q.vocabularyId]);
+  });
+  it('ignores blank text and duplicate speech IDs at the shared reducer boundary', () => {
+    const attempt = createAttempt(scene, [scene.vocabularyIds[0]], 'weak');
+    attempt.questions[0].mode = 'produce';
+    const questionId = attempt.questions[0].id;
+    let state = learningReducer(emptyState(), { type: 'start', attempt });
+    for (const answer of ['', '  ', '!!!']) expect(learningReducer(state, { type: 'answer', attemptId: attempt.id, questionId,
+      record: { answer, correct: false, source: 'typing', at: 1 } })).toBe(state);
+    const record = { answer: 'wrong', correct: false, source: 'speech' as const, recognitionId: 'same-final', at: 1 };
+    state = learningReducer(state, { type: 'answer', attemptId: attempt.id, questionId, record });
+    expect(learningReducer(state, { type: 'answer', attemptId: attempt.id, questionId, record })).toBe(state);
+    expect(state.attempts[attempt.id].questions[0].answers).toHaveLength(1);
+  });
+  it('rejects a corrupt reveal without the three required errors', () => {
+    const attempt = createAttempt(scene, [scene.vocabularyIds[0]], 'weak');
+    attempt.questions[0].mode = 'produce';
+    attempt.questions[0].revealedAt = 3;
+    attempt.completedAt = 3;
+    saveState({ ...emptyState(), attempts: { [attempt.id]: attempt } });
+    expect(loadState(scenes).state.attempts).toEqual({});
+  });
   it.each(['null', '[]', '"text"', '{broken', '{"schemaVersion":2,"scenes":null,"attempts":{}}'])('12. invalid payload %s safely recovers', payload => {
     localStorage.setItem(STORAGE_KEY, payload);
     expect(loadState(scenes).state).toEqual(emptyState());

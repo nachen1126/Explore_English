@@ -1,6 +1,6 @@
 # Explore English
 
-Learn useful English through illustrated places: choose a scene, discover every object, then complete a Find It / Say It or Type It challenge and review your first-answer result.
+Learn useful English through illustrated places: choose a category, choose an available scene, discover every object, then complete a Find It / Say It or Type It challenge and review your first-answer result.
 
 Live: [Explore English on GitHub Pages](https://nachen1126.github.io/Explore_English/#/)
 
@@ -37,6 +37,7 @@ Kitchen, Supermarket, Airport and Gym each have 10 independently audited words/h
 - [Architecture, data model and storage migration](docs/architecture.md)
 - [Baseline audit and removed implementations](docs/refactor-audit.md)
 - [Acceptance and browser verification](docs/validation.md)
+- [Category, keyboard, hints and speech acceptance — 2026-09-06](docs/interaction-validation.md)
 
 ## Content workflow
 
@@ -54,6 +55,8 @@ A development-only hotspot editor displays names, bounds, centres and normalized
 React state persists discoveries and complete challenge attempts under `explore-english-v2`, schemaVersion 2. Known legacy discoveries migrate safely; unreliable legacy scores do not. Restart asks for confirmation. Progress remains local to this browser.
 
 Speech synthesis requests British English. Speech recognition is optional and browser-dependent; typed answers are always supported. Recordings are not stored.
+
+Exploration supports **Next word / Enter**. Correct Find It selections advance after 600 ms; Say It / Type It retains manual continuation. Three valid wrong answers on a Produce question reveal a persistent hint and a Show answer option. Assisted answers remain in Needs practice. Microphone errors never count as vocabulary mistakes. See the latest validation record for real-device testing boundaries.
 
 ## Docker
 

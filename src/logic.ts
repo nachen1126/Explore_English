@@ -24,11 +24,13 @@ export const matches = (answer: string, item: VocabularyItem): boolean => {
   const normalized = normalize(answer);
   return normalized.length > 0 && [item.word, ...item.acceptedAnswers].some(value => normalize(value) === normalized);
 };
-export const isSolved = (question: ChallengeQuestion) => question.answers.some(answer => answer.correct);
+export const wrongAttempts = (question: ChallengeQuestion) => question.answers.filter(answer => !answer.correct).length;
+export const hasHint = (question: ChallengeQuestion) => question.mode === 'produce' && wrongAttempts(question) >= 3;
+export const isSolved = (question: ChallengeQuestion) => question.revealedAt !== undefined || question.answers.some(answer => answer.correct);
 export const currentQuestion = (attempt: ChallengeAttempt) => attempt.questions.find(question => !isSolved(question));
 export const summarize = (attempt: ChallengeAttempt) => {
-  const remembered = attempt.questions.filter(question => question.answers[0]?.correct === true);
-  const weak = attempt.questions.filter(question => question.answers[0]?.correct === false);
+  const remembered = attempt.questions.filter(question => question.answers[0]?.correct === true && question.revealedAt === undefined && !hasHint(question));
+  const weak = attempt.questions.filter(question => question.answers[0]?.correct === false || question.revealedAt !== undefined);
   return {
     score: remembered.length,
     total: attempt.questions.length,
@@ -42,7 +44,7 @@ export function weakVocabulary(state: LearningState): string[] {
   Object.values(state.attempts).forEach(attempt => attempt.questions.forEach(question => {
     const first = question.answers[0];
     if (first && (!latest.has(question.vocabularyId) || latest.get(question.vocabularyId)!.at < first.at)) {
-      latest.set(question.vocabularyId, { at: first.at, weak: !first.correct });
+      latest.set(question.vocabularyId, { at: first.at, weak: !first.correct || hasHint(question) || question.revealedAt !== undefined });
     }
   }));
   return [...latest].filter(([, value]) => value.weak).map(([id]) => id);
@@ -71,6 +73,7 @@ export type Action =
   | { type: 'discover'; sceneId: string; vocabularyId: string; at: number }
   | { type: 'restart'; sceneId: string }
   | { type: 'start'; attempt: ChallengeAttempt }
+  | { type: 'reveal'; attemptId: string; questionId: string; at: number }
   | { type: 'answer'; attemptId: string; questionId: string; record: AnswerRecord };
 export function learningReducer(state: LearningState, action: Action): LearningState {
   switch (action.type) {
@@ -92,10 +95,23 @@ export function learningReducer(state: LearningState, action: Action): LearningS
     case 'answer': {
       const attempt = state.attempts[action.attemptId];
       if (!attempt || attempt.completedAt || currentQuestion(attempt)?.id !== action.questionId) return state;
+      const question = currentQuestion(attempt)!;
+      if (!/[\p{L}\p{N}]/u.test(action.record.answer)
+        || (action.record.source === 'speech' && action.record.recognitionId
+          && question.answers.some(answer => answer.recognitionId === action.record.recognitionId))) return state;
       const questions = attempt.questions.map(question => question.id === action.questionId
         ? { ...question, answers: [...question.answers, action.record] } : question);
       const completedAt = questions.every(isSolved) ? action.record.at : null;
       return { ...state, attempts: { ...state.attempts, [attempt.id]: { ...attempt, questions, completedAt } } };
+    }
+    case 'reveal': {
+      const attempt = state.attempts[action.attemptId];
+      const question = attempt && currentQuestion(attempt);
+      if (!attempt || attempt.completedAt || question?.id !== action.questionId || !hasHint(question)) return state;
+      const questions = attempt.questions.map(item => item.id === action.questionId ? { ...item, revealedAt: action.at } : item);
+      return { ...state, attempts: { ...state.attempts, [attempt.id]: {
+        ...attempt, questions, completedAt: questions.every(isSolved) ? action.at : null,
+      } } };
     }
   }
 }
@@ -168,13 +184,21 @@ function validateAttempt(id: string, value: unknown, catalog: Scene[]): Challeng
     for (const a of q.answers) {
       if (!object(a) || typeof a.answer !== 'string' || typeof a.correct !== 'boolean' || !finite(a.at)
         || !['hotspot', 'typing', 'speech'].includes(String(a.source)) || answers.some(answer => answer.correct)) return null;
-      answers.push({ answer: a.answer, correct: a.correct, at: a.at, source: a.source as AnswerRecord['source'] });
+      if (a.recognitionId !== undefined && (typeof a.recognitionId !== 'string' || a.source !== 'speech'
+        || answers.some(answer => answer.recognitionId === a.recognitionId))) return null;
+      answers.push({ answer: a.answer, correct: a.correct, at: a.at, source: a.source as AnswerRecord['source'],
+        ...(typeof a.recognitionId === 'string' ? { recognitionId: a.recognitionId } : {}) });
     }
-    if (encounteredUnsolved && answers.length) return null;
-    if (!answers.some(answer => answer.correct)) encounteredUnsolved = true;
+    const question: ChallengeQuestion = { id: q.id, vocabularyId: q.vocabularyId, mode: q.mode, answers };
+    if (q.revealedAt !== undefined) {
+      if (!finite(q.revealedAt) || !hasHint(question) || answers.some(answer => answer.correct)) return null;
+      question.revealedAt = q.revealedAt;
+    }
+    if (encounteredUnsolved && (answers.length || question.revealedAt !== undefined)) return null;
+    if (!isSolved(question)) encounteredUnsolved = true;
     seen.add(q.vocabularyId);
     questionIds.add(q.id);
-    questions.push({ id: q.id, vocabularyId: q.vocabularyId, mode: q.mode, answers });
+    questions.push(question);
   }
   if (value.kind === 'full' && seen.size !== scene.vocabularyIds.length) return null;
   if ((value.completedAt !== null) !== questions.every(isSolved)) return null;
