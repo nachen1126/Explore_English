@@ -1,0 +1,232 @@
+/* Natural document flow is the fallback for small windows, zoom and large text.
+   No page content is clipped or hidden to simulate fitting the viewport. */
+:root { line-height: 1.45; }
+.shell { max-width: 1500px; padding: 0 28px; }
+.site-header { height: 62px; min-height: 62px; padding: 0; gap: 16px; }
+.site-footer { margin-top: 20px; padding: 10px 0; font-size: .8rem; }
+.page-heading, .home-heading, .challenge-page, .result-page { padding-top: 18px; }
+.page-heading, .home-heading { padding-bottom: 12px; }
+.page-heading h1, .home-heading h1, .challenge-heading h1, .result-heading h1 { font-size: clamp(1.8rem, 2.5vw, 2.5rem); margin-bottom: 6px; }
+.eyebrow { margin-bottom: 5px; font-size: .72rem; }
+.page-heading p, .home-heading p, .challenge-heading p, .result-heading p { margin-bottom: 0; }
+.home-heading { max-width: none; }
+.home-heading h1 br { display: none; }
+.home-heading .heading-translation { display: inline-block; font-size: .8em; margin-left: 20px; }
+.category-translation { display: inline-block; font-size: .6em; margin: 0 0 0 16px; }
+.progress-bar { height: 4px; margin: 8px 0 12px; flex-shrink: 0; }
+.progress-counter strong { font-size: 1.5rem; }
+.progress-counter { padding-top: 0; }
+.button { min-height: 44px; padding: 9px 13px; font-size: .9rem; }
+input { min-height: 44px; font-size: 1rem; padding: 9px 11px; }
+input[readonly] { background: var(--accent-light); }
+.explore-layout, .challenge-layout { grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; }
+.scene-art-section { min-width: 0; }
+.scene-canvas { width: 100%; }
+.asset-note { margin: 0 0 6px; }
+.word-panel, .answer-panel { margin-top: 0; padding-top: 0; }
+.word-card { padding: 18px; }
+.word-card h2 { font-size: 1.6rem; }
+.word-meta { margin-bottom: 10px; }
+.meaning, .example { margin-bottom: 10px; }
+.word-card-empty { min-height: 0; }
+.word-card-empty h2 { margin: 12px 0; }
+.word-card-empty .fine-rule { margin: 12px 0; }
+.learning-next, .answer-next { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.learning-next .small, .answer-next .small { color: var(--muted); white-space: nowrap; }
+.scene-actions { padding: 8px 0; }
+.object-list-button { width: 100%; margin-top: 4px; }
+.completion-panel { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; margin-top: 12px; }
+.completion-panel h2 { font-size: 1.15rem; margin-bottom: 0; }
+.completion-panel .eyebrow { margin-bottom: 3px; }
+.completion-panel .button-row { gap: 8px; }
+.answer-panel { padding: 16px; display: flex; flex-direction: column; gap: 8px; line-height: 1.35; }
+.answer-panel h2 { font-size: 1.1rem; margin: 0; }
+.answer-panel p { margin: 0; }
+.answer-panel form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.answer-panel label { grid-column: 1 / -1; }
+.answer-panel .image-alternative { font-size: .9rem; }
+.speech-controls { margin: 0; padding-top: 8px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px 10px; }
+.speech-status { font-size: .82rem; }
+.speech-controls .inline-notice, .speech-controls .speech-transcript, .speech-controls .small { grid-column: 1 / -1; }
+.inline-notice { padding: 8px; overflow-wrap: anywhere; }
+.answer-feedback { margin: 0; font-size: .9rem; }
+.answer-feedback p { margin-top: 3px; }
+.answer-feedback:empty { display: none; }
+.answer-hint { padding: 10px; margin: 0; }
+.answer-hint h2 { font-size: 1rem; margin-bottom: 6px; }
+.hint-clue { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.letter-hint { font-size: 1rem; }
+.hint-actions { margin-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hint-actions .small { font-size: .8rem; }
+.hint-actions .button { padding-inline: 9px; flex-shrink: 0; }
+.revealed-word { padding: 10px; border: 1px solid var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.revealed-word h2 { font-family: Georgia, serif; font-size: 1.35rem; }
+.revealed-word p { margin-top: 4px; font-size: .85rem; }
+.answer-next { margin-top: 0; }
+.score-explanation { padding-top: 8px; font-size: .8rem; }
+.answer-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.answer-options .button { font-size: .9rem; min-height: 44px; }
+.dialog-scrim { padding: 16px; }
+.dialog { max-height: calc(100dvh - 32px); overflow: auto; }
+.content-dialog { padding: 20px; width: min(760px, 100%); max-width: 760px; display: flex; flex-direction: column; overflow: visible; }
+.dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; padding-bottom: 14px; }
+.dialog-heading h2 { margin: 0; }
+.dialog-heading .button { flex-shrink: 0; }
+.dialog-content { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px; }
+.dialog-content .word-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 12px; flex-shrink: 0; }
+.pagination span { font-size: .85rem; white-space: nowrap; }
+.view-switch { display: flex; gap: 8px; margin: 0 0 12px; flex-shrink: 0; }
+.view-switch button { min-height: 44px; border: 1px solid var(--line); padding: 9px 16px; border-radius: 8px; background: var(--paper); font-size: .9rem; }
+.view-switch button[aria-selected="true"] { background: var(--accent); color: white; border-color: var(--accent); }
+.category-directory { gap: 16px; }
+.category-card { min-height: 170px; padding: 18px; }
+.category-card h2 { font-size: 1.35rem; margin-bottom: 8px; }
+.category-card h2 span { margin-top: 5px; font-size: 1rem; }
+.category-card p { margin-bottom: 12px; font-size: .9rem; }
+.category-section { padding: 0; }
+.category-heading { margin-bottom: 10px; }
+.category-heading h2 { font-size: 1.15rem; }
+.scene-grid { gap: 18px; }
+.scene-thumbnail { height: clamp(150px, 27dvh, 290px); aspect-ratio: auto; }
+.scene-card-content { padding: 14px 18px; }
+.card-title-row h3 { font-size: 1.2rem; margin-bottom: 4px; }
+.development-label { margin-bottom: 8px; }
+.card-bottom { margin-top: 8px; }
+.category-coming-soon { margin-top: 0; padding: 18px; max-width: none; }
+.category-coming-soon h2 { font-size: 1.25rem; margin-bottom: 8px; }
+.planned-scenes { margin-top: 14px; padding-top: 14px; }
+.planned-scenes h2 { margin-bottom: 6px; }
+.planned-scenes p { margin-bottom: 10px; }
+.planned-scenes ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.planned-scenes li { padding: 18px; font-size: 1rem; }
+.result-page { max-width: none; width: 100%; margin: 0; }
+.result-heading { text-align: left; margin-bottom: 16px; }
+.result-body { display: grid; grid-template-columns: minmax(360px, .85fr) minmax(0, 1.15fr); gap: 24px; align-items: start; }
+.result-summary { padding: 24px; margin: 0; gap: 24px; }
+.score { min-width: 110px; }
+.score strong { font-size: 4rem; }
+.result-stats { padding-left: 22px; }
+.result-stats > div { padding: 5px 0; }
+.result-stats dt { font-size: .85rem; }
+.result-stats dd { font-size: 1.2rem; }
+.result-actions { margin-top: 16px; gap: 10px; }
+.attempt-details-button { margin-top: 12px; width: 100%; }
+.attempt-details { margin: 0; padding: 0; border: 0; }
+.weak-words { margin: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.weak-words h2 { font-size: 1.25rem; margin-bottom: 8px; }
+.weak-words > p { margin-bottom: 12px; }
+.weak-word-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+.weak-word { padding: 8px 0; min-width: 0; gap: 8px; }
+.weak-word strong { font-size: .95rem; }
+.weak-word span { display: block; margin: 2px 0 0; }
+.weak-word .audio-button { padding: 8px; font-size: .85rem; flex-shrink: 0; }
+.perfect-words { padding: 32px; background: var(--accent-light); }
+.review-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 0; }
+.review-grid .word-card { padding: 14px 18px; }
+.review-actions { margin-top: 12px; }
+.empty-state { padding: 32px 0; }
+
+/* The header and footer participate in flex sizing, so banners also reduce the
+   available main height. Image containers use that remaining height, not 100vw. */
+@media (min-width: 65.625em) and (min-height: 42.5em) {
+  #root { height: 100dvh; display: flex; flex-direction: column; }
+  .shell { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; }
+  .site-header { flex: 0 0 62px; }
+  .site-footer { flex: 0 0 30px; margin: 0; padding: 5px 0; }
+  .shell > main { flex: 1; min-height: 0; padding: 14px 0; display: flex; flex-direction: column; }
+  .page-heading, .home-heading, .challenge-page, .result-page { padding-top: 0; }
+  .page-heading, .home-heading { flex-shrink: 0; }
+  .explore-layout, .challenge-layout { flex: 1; min-height: 0; align-items: stretch; }
+  .word-panel, .answer-panel { align-self: start; }
+  .scene-art-section { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .asset-note, .dev-tools { flex-shrink: 0; }
+  .scene-canvas { flex: 1; min-height: 0; container-type: size; display: grid; place-items: center; }
+  .scene-frame { width: min(100cqw, calc(100cqh * var(--scene-ratio))); }
+  .completion-panel { flex-shrink: 0; }
+  .challenge-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .challenge-heading { flex-shrink: 0; }
+  .category-directory { flex: 1; min-height: 0; max-height: 480px; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .category-card { min-height: 0; }
+  .category-main .category-section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .category-main .scene-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 1120px; }
+  .category-main .scene-grid:has(.scene-card:only-child) { grid-template-columns: minmax(0, 550px); }
+  .result-page { min-height: 0; }
+  .review-grid { flex: 1; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .review-grid > div { min-height: 0; display: flex; flex-direction: column; }
+  .review-grid .word-card { height: auto; flex: 1; }
+  .review-grid .word-meta, .review-grid .meaning, .review-grid .example { margin-bottom: 6px; }
+  .review-grid .practice-label { margin-bottom: 4px; }
+}
+@media (max-width: 1049px) {
+  .explore-layout, .challenge-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .scene-canvas { height: clamp(170px, 28dvh, 300px); container-type: size; display: grid; place-items: center; }
+  .scene-frame { width: min(100cqw, calc(100cqh * var(--scene-ratio))); }
+  .word-panel { padding: 0; }
+  .word-card-empty .fine-rule, .word-card-empty .small { display: block; }
+  .completion-panel { align-items: flex-start; flex-wrap: wrap; }
+  .result-body { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .result-summary { flex-direction: row; }
+  .result-stats { border-top: 0; border-left: 1px solid var(--line); padding: 0 0 0 20px; }
+}
+@media (max-width: 600px) {
+  .shell { padding: 0 14px; }
+  .site-header { min-height: 54px; height: auto; padding: 8px 0; gap: 8px; }
+  .brand { font-size: .8rem; gap: 8px; }
+  .wordmark { font-size: 1.3rem; padding-right: 8px; }
+  .nav-back { font-size: .75rem; }
+  .home-heading, .page-heading, .challenge-page, .result-page { padding-top: 12px; }
+  .home-heading h1, .page-heading h1, .challenge-heading h1, .result-heading h1 { font-size: 1.7rem; }
+  .home-heading .heading-translation, .category-translation { display: block; margin: 4px 0 0; }
+  .category-directory { grid-template-columns: 1fr; gap: 10px; }
+  .category-card { min-height: 155px; padding: 14px; }
+  .category-card p { margin-bottom: 6px; }
+  .pagination { gap: 8px; justify-content: space-between; }
+  .pagination .button { padding-inline: 10px; font-size: .82rem; }
+  .view-switch { gap: 6px; }
+  .view-switch button { flex: 1; padding: 8px; font-size: .8rem; }
+  .category-heading > span { display: block; }
+  .category-coming-soon { padding: 14px; }
+  .planned-scenes ul { grid-template-columns: 1fr; gap: 8px; }
+  .planned-scenes li { padding: 12px; font-size: .9rem; }
+  .scene-thumbnail { height: clamp(140px, 25dvh, 240px); }
+  .scene-canvas { height: clamp(150px, 23dvh, 240px); }
+  .explore-heading p:last-child, .challenge-heading p { font-size: .85rem; }
+  .explore-heading { align-items: center; }
+  .progress-counter strong { font-size: 1.2rem; }
+  .word-card { padding: 14px; }
+  .word-card h2 { font-size: 1.4rem; }
+  .word-card-empty h2 { font-size: 1.3rem; margin: 6px 0; }
+  .word-card-empty .fine-rule, .word-card-empty .small { display: none; }
+  .word-card-empty p { margin-bottom: 0; }
+  .learning-next { margin-top: 8px; }
+  .object-list-button { font-size: .8rem; }
+  .completion-panel { padding: 12px; margin-top: 10px; }
+  .completion-panel .button-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .completion-panel .button-row .button { font-size: .8rem; padding: 8px; }
+  .answer-panel { padding: 12px; gap: 7px; }
+  .answer-panel form { grid-template-columns: minmax(0, 1fr) auto; }
+  .speech-controls { column-gap: 8px; }
+  .answer-hint { padding: 8px; }
+  .hint-actions { flex-wrap: wrap; }
+  .hint-actions .button { font-size: .8rem; }
+  .answer-next { justify-content: space-between; }
+  .answer-next .button { flex: 1; }
+  .result-summary { padding: 16px; gap: 16px; }
+  .score { min-width: 74px; }
+  .score strong { font-size: 3rem; }
+  .score > span { font-size: 1.1rem; }
+  .result-stats { padding-left: 14px; }
+  .result-stats > div { gap: 10px; }
+  .result-stats dt { font-size: .8rem; }
+  .result-stats dd { font-size: 1.05rem; }
+  .result-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 10px; gap: 8px; }
+  .result-actions .button { padding: 8px; font-size: .8rem; }
+  .weak-words { padding: 12px; }
+  .weak-word-grid { grid-template-columns: 1fr; }
+  .weak-word span { display: inline; margin-left: 8px; }
+  .review-grid { grid-template-columns: 1fr; }
+  .content-dialog { padding: 14px; }
+  .dialog-heading h2 { font-size: 1.1rem; }
+  .dialog-content .word-chips { grid-template-columns: 1fr; }
+}

@@ -38,6 +38,7 @@ Kitchen, Supermarket, Airport and Gym each have 10 independently audited words/h
 - [Baseline audit and removed implementations](docs/refactor-audit.md)
 - [Acceptance and browser verification](docs/validation.md)
 - [Category, keyboard, hints and speech acceptance — 2026-09-06](docs/interaction-validation.md)
+- [Single-screen layout, Produce Enter and score feedback — 2026-09-08](docs/screen-validation.md)
 
 ## Content workflow
 
@@ -56,7 +57,9 @@ React state persists discoveries and complete challenge attempts under `explore-
 
 Speech synthesis requests British English. Speech recognition is optional and browser-dependent; typed answers are always supported. Recordings are not stored.
 
-Exploration supports **Next word / Enter**. Correct Find It selections advance after 600 ms; Say It / Type It retains manual continuation. Three valid wrong answers on a Produce question reveal a persistent hint and a Show answer option. Assisted answers remain in Needs practice. Microphone errors never count as vocabulary mistakes. See the latest validation record for real-device testing boundaries.
+Exploration supports **Next word / Enter**. Correct Find It selections advance after 600 ms. In Say It / Type It, Enter submits an unfinished answer; a separate Enter after success or Show answer continues, even with focus in the input. Three valid wrong answers reveal a persistent hint. Assisted answers remain in Needs practice. Microphone errors never count as vocabulary mistakes.
+
+Desktop learning, challenge and result layouts size themselves to the available viewport. Category and review collections use URL-backed pagination; result history opens in a scrollable dialog. Small windows and enlarged text retain normal scrolling. Results choose one of five feedback bands from the exact first-answer ratio, with a separate empty state for missing records. See the latest validation record for tested layouts and device boundaries.
 
 ## Docker
 

@@ -34,11 +34,19 @@ An attempt is created only by an explicit Start/Retry/Practice event. Fisher–Y
 
 Each answer stores the submitted text or hotspot ID, correctness, source and timestamp. Only `answers[0].correct` earns a point. Wrong first answers remain weak in that result even after retrying correctly. The reducer rejects old question IDs and events after a question or attempt is solved.
 
-Exploration uses the same discovery callback for Next word and Enter. Its scoped listener ignores composition, key repeat, editable fields and modal dialogs; hotspot focus is supported and the native button activation is prevented. Free object selection remains available.
+Exploration uses the same discovery callback for Next word and Enter. Its scoped listener ignores composition, key repeat, editable fields and modal dialogs; hotspot focus is supported and the native button activation is prevented. Free object selection remains available. Produce has a separate session-scoped capture listener: unfinished input Enter submits normally, while a later Enter after resolution invokes the same Next callback. The held-key guard persists across question remounts. Resolved inputs are read-only so their focus is retained. Find It timing is unchanged.
 
 Find It locks a solved question and schedules one 600 ms transition, with an idempotent question-bound continuation and unmount cleanup. Produce always requires explicit continuation. Its third valid wrong answer (typing and speech share the answer history) reveals a persistent hint. Optional `revealedAt` resolves a question without inserting a fake correct answer; it never earns a point. Hint/reveal state derives from the persisted question and cannot leak into the next question.
 
 Results derive score, accuracy, remembered IDs and failed IDs directly from the attempt. A later attempt updates future weak-word priority without rewriting historical results. Weak practice uses exactly the failed set. Next-scene logic prefers an explicit published next picture in the same topic, excludes the current or duplicate image, otherwise chooses an unfinished same-topic candidate with weak words. No candidate produces an explicit completion message.
+
+`result-feedback.ts` chooses the requested five titles/descriptions using the exact score/total ratio, not rounded accuracy. Perfect recall requires score === total. Result display truncates non-perfect percentages to one decimal to avoid a misleading rounded 100%. Missing/invalid completed records have an empty state. Long attempt history and no-next-scene explanations open in keyboard-accessible dialogs.
+
+## Viewport layout and pagination
+
+`screen-layout.css` retains the existing visual theme while compacting headings, gaps and panels. At normal desktop dimensions the shell is a flex column filling 100dvh: navigation, footer and storage notices participate in sizing, leaving the remaining height for main content. Each image sits in a size container and uses the smaller of the available width and height × its intrinsic ratio. The image and hotspot overlay keep the same frame; there is no crop or stretch.
+
+The desktop breakpoint is expressed in em so larger default font settings can fall back to natural document flow. Small/short windows retain scrolling; page overflow is not hidden. Dialog content alone can scroll inside its visible header/close control. Home shows four categories per desktop page (two on phones); available scenes, planned scenes, review cards and mobile weak-word lists are also paginated. Page/group choices use hash-route search parameters so refresh and browser history work. All content remains reachable without altering learning storage.
 
 ## Storage
 

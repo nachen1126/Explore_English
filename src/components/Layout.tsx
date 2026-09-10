@@ -1,15 +1,15 @@
 import { Component, useEffect, useRef, type ErrorInfo, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-export function Layout({ children, back = '/', backLabel = 'Home' }: { children: ReactNode; back?: string; backLabel?: string }) {
+export function Layout({ children, back = '/', backLabel = 'Home', className = '' }: { children: ReactNode; back?: string; backLabel?: string; className?: string }) {
   const main = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return <><a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); main.current?.focus(); }}>Skip to content</a>
     <div className="shell"><header className="site-header">
       <Link className="brand" to="/" aria-label="Explore English home"><span className="wordmark">EE</span><span>Explore English</span></Link>
-      <Link className="nav-back" to={back}>← {backLabel}</Link>
-    </header><main id="main-content" ref={main} tabIndex={-1}>{children}</main>
+      <Link className="nav-back" to={back}>{back === '/' ? '' : '← '}{backLabel}</Link>
+    </header><main id="main-content" ref={main} tabIndex={-1} className={className}>{children}</main>
     <footer className="site-footer"><span>Explore English</span><span>Learn at your own pace.</span></footer></div></>;
 }
 export function MissingPage({ message = 'This page is not available.' }: { message?: string }) {

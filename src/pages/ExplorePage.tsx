@@ -8,6 +8,7 @@ import { Layout, MissingPage, RestartDialog } from '../components/Layout';
 import { SceneArt } from '../components/SceneArt';
 import { WordCard } from '../components/WordCard';
 import { useLearningEnter } from '../useLearningEnter';
+import { Modal } from '../components/Modal';
 
 export function ExplorePage() {
   const { sceneId = '' } = useParams();
@@ -23,6 +24,7 @@ function ExploreScene({ sceneId }: { sceneId: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [hint, setHint] = useState<string | undefined>();
   const [restart, setRestart] = useState(false);
+  const [objectsOpen, setObjectsOpen] = useState(false);
   const [audioError, setAudioError] = useState(false);
   useEffect(() => { dispatch({ type: 'visit', sceneId: scene.id, at: Date.now() }); }, [dispatch, scene.id]);
   useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
@@ -45,33 +47,33 @@ function ExploreScene({ sceneId }: { sceneId: string }) {
     dispatch({ type: 'start', attempt });
     navigate(`/challenge/${scene.id}/${attempt.id}`);
   }
-  return <Layout back={`/category/${category.id}`} backLabel="返回本分类 · Category"><section className="page-heading explore-heading">
+  return <Layout className="explore-main" back={`/category/${category.id}`} backLabel="返回本分类 · Category"><section className="page-heading explore-heading">
     <div><p className="eyebrow">{topic.title} · Explore</p><h1>{scene.title}</h1><p>Choose an object. Learn a word. Make it yours.</p></div>
     <div className="progress-counter"><strong>{explored.length}/{scene.vocabularyIds.length}</strong><span>objects discovered</span></div>
   </section>
     <progress className="progress-bar" value={explored.length} max={scene.vocabularyIds.length} aria-label="Exploration progress" />
-    <div className="explore-layout"><div><SceneArt scene={scene} discovered={explored} onTap={discover} highlight={hint ?? selected ?? undefined} />
-      <div className="scene-actions"><button className="text-button" onClick={() => {
-        const remaining = scene.vocabularyIds.find(id => !explored.includes(id));
-        setHint(remaining); if (!remaining) setSelected(scene.vocabularyIds[0]);
-      }}>{complete ? 'Review an object' : 'Show me a hint'}</button>
-        <button className="text-button muted" onClick={() => setRestart(true)}>Start over</button></div>
-      <details className="object-list"><summary>All objects · keyboard & small-screen access</summary>
-        <div className="word-chips">{scene.vocabularyIds.map((id, index) => <button key={id} onClick={() => discover(id)}>
-          <span>{String(index + 1).padStart(2, '0')}</span> {vocabulary[id].word}{explored.includes(id) && <span aria-label="discovered"> ✓</span>}
-        </button>)}</div></details></div>
+    <div className="explore-layout"><SceneArt scene={scene} discovered={explored} onTap={discover} highlight={hint ?? selected ?? undefined} />
       <aside className="word-panel" aria-live="polite">{selected ? <WordCard item={vocabulary[selected]} onClose={() => setSelected(null)} />
         : <div className="word-card word-card-empty"><span className="eyebrow">A closer look</span><h2>A scene full of words.</h2><p>Tap an object in the picture to see its meaning and hear it in British English.</p><span className="fine-rule" /><p className="small">You can revisit every object as often as you like.</p></div>}
         {audioError && <p className="inline-notice" role="status">Pronunciation is unavailable in this browser. The word card is still available.</p>}
         <div className="learning-next"><button className="button primary" data-learn-next disabled={!nextId} onClick={nextWord}>Next word →</button>
           <span className="small">Press Enter</span></div>
+        <div className="scene-actions"><button className="text-button" onClick={() => {
+          const remaining = scene.vocabularyIds.find(id => !explored.includes(id));
+          setHint(remaining); if (!remaining) setSelected(scene.vocabularyIds[0]);
+        }}>{complete ? 'Review an object' : 'Show me a hint'}</button>
+          <button className="text-button muted" onClick={() => setRestart(true)}>Start over</button></div>
+        <button className="button secondary object-list-button" onClick={() => setObjectsOpen(true)}>All objects · keyboard & small-screen access</button>
       </aside></div>
-    {complete && <section className="completion-panel"><div><p className="eyebrow">Exploration complete</p><h2>You found them all!</h2><p>Put your new words into practice, or take another look.</p></div>
+    {complete && <section className="completion-panel"><div><p className="eyebrow">Exploration complete</p><h2>You found them all!</h2></div>
       <div className="button-row"><button className="button primary" onClick={start}>Start Challenge →</button>
         {latestAttempt && !latestAttempt.completedAt && <Link className="button secondary" to={`/challenge/${scene.id}/${latestAttempt.id}`}>Resume Challenge</Link>}
         <Link className="button secondary" to={`/review/${scene.id}`}>Review Words</Link><Link className="text-button" to={`/category/${category.id}`}>返回本分类 · Category</Link></div></section>}
     {restart && <RestartDialog onCancel={() => setRestart(false)} onConfirm={() => {
       dispatch({ type: 'restart', sceneId: scene.id }); setSelected(null); setHint(undefined); setRestart(false);
     }} />}
+    {objectsOpen && <Modal title="All objects" onClose={() => setObjectsOpen(false)}><div className="word-chips">{scene.vocabularyIds.map((id, index) => <button key={id} onClick={() => { discover(id); setObjectsOpen(false); }}>
+      <span>{String(index + 1).padStart(2, '0')}</span> {vocabulary[id].word}{explored.includes(id) && <span aria-label="discovered"> ✓</span>}
+    </button>)}</div></Modal>}
   </Layout>;
 }

@@ -83,11 +83,11 @@ afterEach(() => { vi.useRealTimers(); });
 describe('category navigation and existing discoveries', () => {
   it('requires Home → Sports → Gym, with working category/home links and browser history', () => {
     mount();
-    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(8);
+    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(4);
     expect(screen.queryByRole('link', { name: /Gym ·/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: '运动篇 · Sports & Fitness' }));
     expect(screen.getByLabelText('Current route')).toHaveTextContent('/category/sports-fitness');
-    expect(screen.getByRole('link', { name: '← 返回首页 · Home' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: '返回首页 · Home' })).toHaveAttribute('href', '/');
     fireEvent.click(screen.getByRole('link', { name: 'Gym · Start Exploring' }));
     expect(screen.getByLabelText('Current route')).toHaveTextContent('/scene/gym-1');
     expect(screen.getByRole('link', { name: '← 返回本分类 · Category' })).toHaveAttribute('href', '/category/sports-fitness');
@@ -97,7 +97,7 @@ describe('category navigation and existing discoveries', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Browser forward' }));
     expect(screen.getByLabelText('Current route')).toHaveTextContent('/scene/gym-1');
     fireEvent.click(screen.getByRole('link', { name: '← 返回本分类 · Category' }));
-    fireEvent.click(screen.getByRole('link', { name: '← 返回首页 · Home' }));
+    fireEvent.click(screen.getByRole('link', { name: '返回首页 · Home' }));
     expect(screen.getByRole('link', { name: '运动篇 · Sports & Fitness' })).toBeVisible();
   });
 

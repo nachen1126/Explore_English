@@ -7,7 +7,9 @@ import { speak, useRecognition } from '../speech';
 import type { ChallengeAttempt, ChallengeQuestion, Scene } from '../types';
 import { Layout, MissingPage } from '../components/Layout';
 import { SceneArt } from '../components/SceneArt';
-import { AudioButton, WordCard } from '../components/WordCard';
+import { AudioButton } from '../components/WordCard';
+import { useChallengeEnter } from '../useChallengeEnter';
+import { Modal } from '../components/Modal';
 
 export function ChallengePage() {
   const { sceneId = '', attemptId } = useParams();
@@ -44,7 +46,8 @@ function ChallengeSession({ scene, attempt }: { scene: Scene; attempt: Challenge
     if (index === attempt.questions.length - 1) navigate(`/result/${scene.id}/${attempt.id}`);
     else setIndex(value => value === index ? value + 1 : value);
   }, [question, index, attempt.questions.length, attempt.id, navigate, scene.id]);
-  return <Layout back={`/scene/${scene.id}`} backLabel="Back to scene">
+  useChallengeEnter(question, next);
+  return <Layout className="challenge-main" back={`/scene/${scene.id}`} backLabel="Back to scene">
     <QuestionPanel key={question.id} scene={scene} attempt={attempt} question={question} index={index} onNext={next} />
   </Layout>;
 }
@@ -57,6 +60,7 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
   const [recognitionId, setRecognitionId] = useState<string | undefined>();
   const composing = useRef(false);
   const [audioError, setAudioError] = useState(false);
+  const [choicesOpen, setChoicesOpen] = useState(false);
   const item = vocabulary[question.vocabularyId];
   const solved = isSolved(question);
   const lastAnswer = question.answers.at(-1);
@@ -93,24 +97,24 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
         record: { answer: id, correct: id === item.id, source: 'hotspot', at: Date.now() } }) : undefined} />
       <div className="answer-panel">
         {question.mode === 'find' ? <><h2>Listen & find</h2><AudioButton item={item} />
-          <details className="object-list"><summary>Text alternatives for the picture</summary>
+          <button className="button secondary object-list-button" onClick={() => setChoicesOpen(true)}>Text alternatives for the picture</button>
+          {choicesOpen && <Modal title="Text alternatives for the picture" onClose={() => setChoicesOpen(false)}>
             <div className="answer-options">{scene.hotspots.map((hotspot, position) => <button key={hotspot.vocabularyId}
-              className="button secondary" disabled={solved} onClick={() => dispatch({
+              className="button secondary" disabled={solved} onClick={() => { dispatch({
                 type: 'answer', attemptId: attempt.id, questionId: question.id,
                 record: { answer: hotspot.vocabularyId, correct: hotspot.vocabularyId === item.id, source: 'hotspot', at: Date.now() },
-              })}>{position + 1}. <span lang="zh-CN">{vocabulary[hotspot.vocabularyId].chineseMeaning}</span></button>)}</div>
-          </details></> : <><h2>Your answer</h2><p className="image-alternative">Picture clue: <span lang="zh-CN">{item.chineseMeaning}</span></p>
+              }); setChoicesOpen(false); }}>{position + 1}. <span lang="zh-CN">{vocabulary[hotspot.vocabularyId].chineseMeaning}</span></button>)}</div>
+          </Modal>}</> : <><p className="image-alternative">Picture clue: <span lang="zh-CN">{item.chineseMeaning}</span></p>
           <form onSubmit={submit}><label htmlFor="word-answer">Type the English word</label>
             <input id="word-answer" name="answer" autoComplete="off" autoCapitalize="none" spellCheck={false} value={answer}
-              disabled={solved} onChange={event => { setAnswer(event.target.value); setInputSource('typing'); setRecognitionId(undefined); }}
+              readOnly={solved} onChange={event => { if (!solved) { setAnswer(event.target.value); setInputSource('typing'); setRecognitionId(undefined); } }}
               onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}
               onKeyDown={event => {
                 if (event.key === 'Enter' && (composing.current || event.nativeEvent.isComposing || event.keyCode === 229 || event.repeat)) event.preventDefault();
               }} placeholder="Your answer" />
             <button className="button primary" type="submit" disabled={!validAnswer || solved || duplicateSpeech}>Check answer</button>
           </form>
-          {recognition.supported ? <div className="speech-controls">
-            <p className="small">Click to start. Say the word, check the recognized text, then select Check answer.</p>
+          {!solved && (recognition.supported ? <div className="speech-controls">
             {recording ? <button className="button secondary" onClick={recognition.stop}>Stop recording</button>
               : recognition.status === 'processing' ? <button className="button secondary" onClick={recognition.cancel}>Cancel recognition</button>
                 : <button className="button secondary" disabled={solved} onClick={recognition.start}>{recognition.status === 'error' || duplicateSpeech ? 'Retry microphone' : 'Use microphone'}</button>}
@@ -119,29 +123,28 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
             {duplicateSpeech && !solved && <p className="small">This recording has been checked. Record again or edit your answer to retry.</p>}
             {recognition.error && <p className="inline-notice" role="alert">{recognition.error}</p>}
           </div> : <div className="speech-controls"><button className="button secondary" disabled>Microphone unavailable</button>
-            <p className="inline-notice">{recognition.unavailableReason}</p></div>}
+            <p className="inline-notice">{recognition.unavailableReason}</p></div>)}
         </>}
         <div className="answer-feedback" role="status" aria-live="polite">
-          {lastAnswer && (revealed ? <><strong>Answer shown.</strong><p>This word stays in Needs practice. Continue when you are ready.</p></>
-            : solved ? <><strong>Correct.</strong><p>{question.answers[0].correct ? 'Remembered on your first try.' : 'You got there. This word stays in Needs practice for this attempt.'}</p></>
-            : assisted ? <><strong>A little help is ready.</strong><p>Use the hint below, or view the answer to continue.</p></>
-              : <><strong>Not quite. Try again.</strong><p>This word is marked for practice. Another try will help you learn it.</p></>)}
+          {lastAnswer && (revealed ? <><strong>Answer shown.</strong><p>This word stays in Needs practice.</p></>
+            : solved ? <><strong>Correct.</strong><p>{question.answers[0].correct ? 'Remembered on your first try.' : 'This word stays in Needs practice.'}</p></>
+            : assisted ? <strong>A little help is ready.</strong>
+              : <><strong>Not quite. Try again.</strong><p>Your first answer is kept.</p></>)}
         </div>
         {assisted && <section className="answer-hint" aria-label="Word hint" role="status"><h2>A little help · 提示</h2>
-          <p lang="zh-CN">{item.chineseMeaning}</p>
-          <p className="letter-hint">{item.word.split(' ').map(word => [...word].map((letter, position) => position === 0 ? letter : '_').join(' ')).join(' / ')}</p>
-          <p className="small">{item.word.replace(/[^a-z]/gi, '').length} letters · 字母。使用提示后，本题保留在 Needs practice。</p>
+          <p className="hint-clue"><span lang="zh-CN">{item.chineseMeaning}</span><span className="letter-hint">{item.word.split(' ').map(word => [...word].map((letter, position) => position === 0 ? letter : '_').join(' ')).join(' / ')}</span></p>
+          <div className="hint-actions"><p className="small">{item.word.replace(/[^a-z]/gi, '').length} letters · Needs practice</p>
           {!solved && <button className="button secondary" onClick={() => {
             recognition.cancel();
             dispatch({ type: 'reveal', attemptId: attempt.id, questionId: question.id, at: Date.now() });
             if (!speak(item.audioText, () => setAudioError(true))) setAudioError(true);
-          }}>查看答案 · Show answer</button>}
+          }}>查看答案 · Show answer</button>}</div>
         </section>}
-        {revealed && <WordCard item={item} />}
+        {revealed && <section className="revealed-word" aria-label={`Word card: ${item.word}`}><div><h2>{item.word}</h2>{item.britishIPA && <p>{item.britishIPA} · UK</p>}</div><AudioButton item={item} /></section>}
         {audioError && <p className="inline-notice">Pronunciation is unavailable. You can still read the answer and continue.</p>}
         {solved && (question.mode === 'find' ? <p className="small" role="status">Correct selection · continuing…</p>
-          : <button className="button primary" onClick={onNext}>{index + 1 === attempt.questions.length ? 'See results →' : 'Next word →'}</button>)}
-        <p className="score-explanation small">Only your first answer counts towards this attempt’s score.</p>
+          : <div className="answer-next"><button className="button primary" data-challenge-next onClick={onNext}>{index + 1 === attempt.questions.length ? 'See results →' : 'Next word →'}</button><span className="small">Press Enter</span></div>)}
+        <p className="score-explanation small">Only your first answer counts.</p>
       </div></div>
   </section>;
 }

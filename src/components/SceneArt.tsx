@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from 'react';
+import { useState, type CSSProperties, type MouseEvent } from 'react';
 import { assetUrl, vocabulary } from '../data';
 import { hotspotStyle, normalizePoint } from '../scene-geometry';
 import type { Scene } from '../types';
@@ -23,6 +23,7 @@ export function SceneArt({ scene, discovered = [], onTap, highlight, challenge =
   }
   return <div className="scene-art-section">
     {scene.assetStatus === 'development' && <p className="asset-note">Development artwork · final illustration to follow</p>}
+    <div className="scene-canvas" style={{ '--scene-ratio': scene.imageWidth / scene.imageHeight } as CSSProperties}>
     <div className="scene-frame" data-testid="scene-frame" style={{ aspectRatio: `${scene.imageWidth} / ${scene.imageHeight}` }} onClick={inspect}>
       <img key={reload} className="scene-image" src={assetUrl(scene.image)} width={scene.imageWidth} height={scene.imageHeight}
         alt={`${scene.title}: an illustrated place to explore`} decoding="async"
@@ -44,7 +45,7 @@ export function SceneArt({ scene, discovered = [], onTap, highlight, challenge =
           </button>;
         })}
       </div>
-    </div>
+    </div></div>
     {import.meta.env.DEV && <details className="dev-tools">
       <summary>Hotspot calibration (development only)</summary>
       <label><input type="checkbox" checked={debug} onChange={event => setDebug(event.target.checked)} /> Show names, boundaries and centres</label>
