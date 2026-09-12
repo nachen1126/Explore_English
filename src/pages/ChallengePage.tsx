@@ -59,6 +59,7 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
   const [inputSource, setInputSource] = useState<'typing' | 'speech'>('typing');
   const [recognitionId, setRecognitionId] = useState<string | undefined>();
   const composing = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
   const [audioError, setAudioError] = useState(false);
   const [choicesOpen, setChoicesOpen] = useState(false);
   const item = vocabulary[question.vocabularyId];
@@ -71,6 +72,12 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
     && question.answers.some(record => record.recognitionId === recognitionId);
   const validAnswer = /[\p{L}\p{N}]/u.test(answer);
   const recording = recognition.status === 'starting' || recognition.status === 'listening';
+  useEffect(() => {
+    // A mouse/trackpad desktop gets continuous typing; touch devices keep control
+    // of the software keyboard. Never steal focus from an open dialog.
+    if (question.mode === 'produce' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches
+      && !document.querySelector('[aria-modal="true"]')) input.current?.focus({ preventScroll: true });
+  }, [question.id, question.mode]);
   useEffect(() => {
     if (question.mode !== 'find' || !solved) return;
     const timer = window.setTimeout(onNext, 600);
@@ -99,14 +106,14 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
         {question.mode === 'find' ? <><h2>Listen & find</h2><AudioButton item={item} />
           <button className="button secondary object-list-button" onClick={() => setChoicesOpen(true)}>Text alternatives for the picture</button>
           {choicesOpen && <Modal title="Text alternatives for the picture" onClose={() => setChoicesOpen(false)}>
-            <div className="answer-options">{scene.hotspots.map((hotspot, position) => <button key={hotspot.vocabularyId}
+            <div className="answer-options">{scene.vocabularyIds.map((id, position) => <button key={id}
               className="button secondary" disabled={solved} onClick={() => { dispatch({
                 type: 'answer', attemptId: attempt.id, questionId: question.id,
-                record: { answer: hotspot.vocabularyId, correct: hotspot.vocabularyId === item.id, source: 'hotspot', at: Date.now() },
-              }); setChoicesOpen(false); }}>{position + 1}. <span lang="zh-CN">{vocabulary[hotspot.vocabularyId].chineseMeaning}</span></button>)}</div>
-          </Modal>}</> : <><p className="image-alternative">Picture clue: <span lang="zh-CN">{item.chineseMeaning}</span></p>
+                record: { answer: id, correct: id === item.id, source: 'hotspot', at: Date.now() },
+              }); setChoicesOpen(false); }}>{position + 1}. <span lang="zh-CN">{vocabulary[id].chineseMeaning}</span></button>)}</div>
+          </Modal>}</> : <>
           <form onSubmit={submit}><label htmlFor="word-answer">Type the English word</label>
-            <input id="word-answer" name="answer" autoComplete="off" autoCapitalize="none" spellCheck={false} value={answer}
+            <input ref={input} id="word-answer" name="answer" autoComplete="off" autoCapitalize="none" spellCheck={false} value={answer}
               readOnly={solved} onChange={event => { if (!solved) { setAnswer(event.target.value); setInputSource('typing'); setRecognitionId(undefined); } }}
               onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}
               onKeyDown={event => {

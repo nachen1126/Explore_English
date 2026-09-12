@@ -42,7 +42,6 @@ export function CategoryPage() {
           <div className="scene-thumbnail"><img src={assetUrl(scene.thumbnail)} width={scene.imageWidth} height={scene.imageHeight} loading="lazy"
             alt={`${scene.title} illustration`} decoding="async" /></div>
           <div className="scene-card-content"><div className="card-title-row"><h3>{topic?.chineseTitle} · {scene.title}</h3><span>{scene.vocabularyIds.length} words</span></div>
-            {scene.assetStatus === 'development' && <p className="development-label">Development artwork</p>}
             <progress value={count} max={scene.vocabularyIds.length} aria-label={`${scene.title} exploration progress`} />
             <div className="card-bottom"><span>{count}/{scene.vocabularyIds.length} discovered</span><strong>{label} <span aria-hidden="true">↗</span></strong></div>
           </div></Link>;

@@ -20,6 +20,7 @@ export interface VocabularyItem {
   acceptedAnswers: string[];
   audioText: string;
   ipaSource?: string;
+  ipaSources?: string[];
 }
 export interface Hotspot {
   vocabularyId: string;
@@ -28,7 +29,9 @@ export interface Hotspot {
   y: number;
   width: number;
   height: number;
-  shape: 'rect' | 'ellipse';
+  shape: 'rect' | 'ellipse' | 'polygon';
+  /** Polygon vertices in original-image coordinates, normalized to [0, 1]. */
+  points?: [number, number][];
 }
 export interface Scene {
   id: string;

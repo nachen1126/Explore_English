@@ -1,4 +1,5 @@
-import type { ChallengeAttempt, ChallengeQuestion, LearningState, Scene, VocabularyItem, AnswerRecord } from './types';
+import type { ChallengeAttempt, ChallengeQuestion, LearningState, Scene, VocabularyItem, AnswerRecord, Topic } from './types';
+import { topics as defaultTopics } from './data';
 
 export const SCHEMA_VERSION = 2 as const;
 export const STORAGE_KEY = 'explore-english-v2';
@@ -115,14 +116,20 @@ export function learningReducer(state: LearningState, action: Action): LearningS
     }
   }
 }
-export function recommendNext(scene: Scene, scenes: Scene[], state: LearningState): Scene | undefined {
-  const candidates = scenes.filter(candidate => candidate.published && candidate.topicId === scene.topicId
+export function recommendNext(scene: Scene, scenes: Scene[], state: LearningState, topics: Topic[] = defaultTopics): Scene | undefined {
+  const candidates = scenes.filter(candidate => candidate.published && candidate.vocabularyIds.length > 0
     && candidate.id !== scene.id && candidate.image !== scene.image);
-  const explicitNext = candidates.find(candidate => candidate.id === scene.nextSceneId);
+  const sameTopic = candidates.filter(candidate => candidate.topicId === scene.topicId);
+  const explicitNext = sameTopic.find(candidate => candidate.id === scene.nextSceneId);
   if (explicitNext) return explicitNext;
-  const weak = weakVocabulary(state);
-  return candidates.filter(candidate => (state.scenes[candidate.id]?.explored.length ?? 0) < candidate.vocabularyIds.length)
-    .sort((a, b) => b.vocabularyIds.filter(id => weak.includes(id)).length - a.vocabularyIds.filter(id => weak.includes(id)).length)[0];
+  const unfinished = (candidate: Scene) => !Object.values(state.attempts).some(attempt =>
+    attempt.sceneId === candidate.id && attempt.kind === 'full' && attempt.completedAt !== null);
+  const categoryId = topics.find(topic => topic.id === scene.topicId)?.categoryId;
+  return sameTopic.find(unfinished)
+    ?? candidates.find(candidate => unfinished(candidate) && categoryId !== undefined
+      && topics.find(topic => topic.id === candidate.topicId)?.categoryId === categoryId)
+    ?? candidates.find(unfinished)
+    ?? candidates[0];
 }
 
 type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;

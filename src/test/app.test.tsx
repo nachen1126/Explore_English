@@ -64,10 +64,10 @@ describe('exploration interaction', () => {
   it('shows the full completion area and challenge return keeps all discoveries', async () => {
     const user = userEvent.setup();
     mount('/scene/kitchen-1'); loadPicture();
-    for (const id of scene.vocabularyIds) await user.click(screen.getByRole('button', { name: `Explore ${vocabulary[id].word}` }));
+    for (const id of scene.vocabularyIds) await user.click(screen.getAllByRole('button', { name: `Explore ${vocabulary[id].word}` })[0]);
     expect(screen.getByRole('heading', { name: 'You found them all!' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Review Words' })).toBeVisible();
-    expect(screen.getByRole('link', { name: '返回本分类 · Category' })).toBeVisible();
+    expect(screen.getByRole('link', { name: '← 返回本分类 · Category' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: /Start Challenge/ }));
     expect(screen.getByRole('heading', { name: /^Find the/ })).toBeVisible();
     await user.click(screen.getByRole('link', { name: '← Back to scene' }));
@@ -144,13 +144,13 @@ describe('results and navigation', () => {
     mount(`/result/${scene.id}/${attempt.id}`);
     expect(screen.getByText('90%')).toBeVisible();
   });
-  it('10. Continue Exploring explicitly explains that no next scene exists', async () => {
+  it('10. next-scene link names a real new scene without an unnecessary dialog', async () => {
     const user = userEvent.setup();
     const attempt = finishAttempt();
     mount(`/result/${scene.id}/${attempt.id}`);
-    await user.click(screen.getByRole('button', { name: 'Continue Exploring →' }));
-    expect(screen.getByRole('heading', { name: 'You’ve completed the available Kitchen scenes.' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Choose another topic' })).toHaveAttribute('href', '/');
+    await user.click(screen.getByRole('link', { name: 'Next: Kitchen · Cooking · 10 words →' }));
+    expect(screen.getByRole('heading', { name: 'Kitchen · Cooking' })).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   it('Practice Weak Words starts an attempt containing only failed words', async () => {
     const user = userEvent.setup();
@@ -166,7 +166,7 @@ describe('results and navigation', () => {
     const page = mount('/');
     expect(screen.getByRole('heading', { name: /Choose your world/ })).toBeVisible();
     const main = screen.getByRole('main');
-    expect(within(main).getAllByRole('link')).toHaveLength(4);
+    expect(within(main).getAllByRole('link')).toHaveLength(8);
     expect(within(main).queryByRole('link', { name: /Café|Underwater|Living Room/ })).not.toBeInTheDocument();
     page.unmount();
     mount('/scene/cafe-1');

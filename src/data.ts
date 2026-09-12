@@ -52,5 +52,6 @@ export const getTopic = (id: string) => topics.find(topic => topic.id === id);
 export const publishedScenes = scenes.filter(scene => scene.published);
 export const getCategory = (id: string) => categories.find(category => category.id === id);
 export const getSceneCategory = (scene: Scene) => getCategory(getTopic(scene.topicId)?.categoryId ?? '');
-export const getCategoryScenes = (categoryId: string) => publishedScenes.filter(scene => getTopic(scene.topicId)?.categoryId === categoryId);
+export const getCategoryScenes = (categoryId: string) => publishedScenes.filter(scene => getTopic(scene.topicId)?.categoryId === categoryId)
+  .sort((a, b) => Number(b.assetStatus === 'final') - Number(a.assetStatus === 'final'));
 export const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path}`;

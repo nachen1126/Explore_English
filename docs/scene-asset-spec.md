@@ -1,6 +1,6 @@
 # 场景图片与热点交付规范
 
-所有下列图片仍待提供；现有四张图只是明确标记的开发素材。本清单是后续插画制作需求，不是已发布内容或自动生成词汇。
+Kitchen · Cooking 与 Airport · Departures 已按本规范制作、压缩、逐词校准并发布。下表其余图片仍待提供；现有四张旧图继续作为兼容旧进度的素材。本清单中的未完成项目只是后续插画需求，不是已发布内容或自动生成词汇。
 
 ## 统一要求
 
@@ -50,6 +50,11 @@
 | Nature & Leisure | Underwater World | `underwater-01.webp` | whale, shark, fish, turtle, octopus, crab, seahorse, jellyfish, lobster, shrimp | 自然海底横向全景，大小动物分层但都清晰，留出足够空隙供独立热点。 | 不出现海底办公室、穿衣动物或重复拟人动作；章鱼腕足及虾蟹外形需准确。 |
 
 ## 现有开发素材与替换策略
+
+| 场景 | 正式文件 | 原尺寸 | 主图大小 | 状态 |
+|---|---|---|---|---|
+| Kitchen · Cooking | `kitchen-cooking.webp` | 1536 × 1024 | 158,632 B | final；10 个图片专属词，15 个热点区域 |
+| Airport · Departures | `airport-departures.webp` | 1536 × 1024 | 213,560 B | final；10 个图片专属词，15 个热点区域 |
 
 | 场景 | 当前开发文件 | 原尺寸 | 主图大小 | 状态 |
 |---|---|---|---|---|

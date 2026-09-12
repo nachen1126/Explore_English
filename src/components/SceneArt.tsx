@@ -3,6 +3,7 @@ import { assetUrl, vocabulary } from '../data';
 import { hotspotStyle, normalizePoint } from '../scene-geometry';
 import type { Scene } from '../types';
 import { HotspotEditor } from './HotspotEditor';
+import { Modal } from './Modal';
 
 interface Props {
   scene: Scene;
@@ -10,19 +11,20 @@ interface Props {
   onTap?: (id: string) => void;
   highlight?: string;
   challenge?: boolean;
+  enlarged?: boolean;
 }
-export function SceneArt({ scene, discovered = [], onTap, highlight, challenge = false }: Props) {
+export function SceneArt({ scene, discovered = [], onTap, highlight, challenge = false, enlarged = false }: Props) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [reload, setReload] = useState(0);
   const [debug, setDebug] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
   const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
   function inspect(event: MouseEvent<HTMLDivElement>) {
     if (import.meta.env.DEV && debug) {
       setPoint(normalizePoint(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect()));
     }
   }
-  return <div className="scene-art-section">
-    {scene.assetStatus === 'development' && <p className="asset-note">Development artwork · final illustration to follow</p>}
+  return <div className={`scene-art-section ${enlarged ? 'enlarged-art' : ''}`}>
     <div className="scene-canvas" style={{ '--scene-ratio': scene.imageWidth / scene.imageHeight } as CSSProperties}>
     <div className="scene-frame" data-testid="scene-frame" style={{ aspectRatio: `${scene.imageWidth} / ${scene.imageHeight}` }} onClick={inspect}>
       <img key={reload} className="scene-image" src={assetUrl(scene.image)} width={scene.imageWidth} height={scene.imageHeight}
@@ -35,8 +37,9 @@ export function SceneArt({ scene, discovered = [], onTap, highlight, challenge =
         {scene.hotspots.map((hotspot, index) => {
           const found = discovered.includes(hotspot.vocabularyId);
           const name = vocabulary[hotspot.vocabularyId].word;
-          return <button key={hotspot.vocabularyId} className={`hotspot ${found ? 'is-found' : ''} ${highlight === hotspot.vocabularyId ? 'is-highlighted' : ''}`}
-            style={hotspotStyle(hotspot)} disabled={status !== 'ready' || !onTap}
+          return <button key={`${hotspot.vocabularyId}-${index}`} data-word-id={hotspot.vocabularyId} data-region={index}
+            className={`hotspot ${found ? 'is-found' : ''} ${highlight === hotspot.vocabularyId ? 'is-highlighted' : ''}`}
+            style={{ ...hotspotStyle(hotspot), zIndex: scene.hotspots.filter(other => other.width * other.height > hotspot.width * hotspot.height).length + 1 }} disabled={status !== 'ready' || !onTap}
             aria-label={challenge ? `Select object ${index + 1}` : `${found ? 'Review' : 'Explore'} ${name}`}
             onClick={() => onTap?.(hotspot.vocabularyId)}>
             {found && <span className="found-marker" aria-hidden="true">✓</span>}
@@ -45,8 +48,22 @@ export function SceneArt({ scene, discovered = [], onTap, highlight, challenge =
           </button>;
         })}
       </div>
+      <svg className="hotspot-outlines" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+        {scene.hotspots.filter(h => (import.meta.env.DEV && debug) || h.vocabularyId === highlight).map((h, index) => {
+          const props = { fill: 'none', stroke: h.vocabularyId === highlight ? '#285c4d' : '#b72040', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' as const };
+          return h.shape === 'polygon' && h.points ? <polygon key={index} points={h.points.map(([x, y]) => `${x * 1000},${y * 1000}`).join(' ')} {...props} />
+            : h.shape === 'ellipse' ? <ellipse key={index} cx={(h.x + h.width / 2) * 1000} cy={(h.y + h.height / 2) * 1000} rx={h.width * 500} ry={h.height * 500} {...props} />
+              : <rect key={index} x={h.x * 1000} y={h.y * 1000} width={h.width * 1000} height={h.height * 1000} {...props} />;
+        })}
+      </svg>
     </div></div>
-    {import.meta.env.DEV && <details className="dev-tools">
+    {!enlarged && <button className="text-button enlarge-picture" onClick={() => setZoomOpen(true)}>Enlarge picture</button>}
+    {zoomOpen && <Modal title={`${scene.title} · Larger picture`} onClose={() => setZoomOpen(false)}>
+      <p className="small">Scroll across the larger picture to see and select smaller objects.</p>
+      <SceneArt scene={scene} discovered={discovered} highlight={highlight} challenge={challenge} enlarged
+        onTap={onTap ? id => { onTap(id); setZoomOpen(false); } : undefined} />
+    </Modal>}
+    {import.meta.env.DEV && !enlarged && <details className="dev-tools">
       <summary>Hotspot calibration (development only)</summary>
       <label><input type="checkbox" checked={debug} onChange={event => setDebug(event.target.checked)} /> Show names, boundaries and centres</label>
       {point && <output>Click: x = {point.x.toFixed(4)}, y = {point.y.toFixed(4)}</output>}

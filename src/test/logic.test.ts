@@ -112,17 +112,17 @@ describe('answer matching', () => {
   });
 });
 describe('safe continuation', () => {
-  it('9. excludes the current scene, other topics, unpublished and duplicate pictures', () => {
+  it('9. excludes the current scene, unpublished and duplicate pictures', () => {
     const duplicate = { ...scene, id: 'duplicate', nextSceneId: null };
     const unpublished = { ...scene, id: 'draft', image: 'different.webp', published: false };
-    expect(recommendNext(scene, [scene, duplicate, unpublished, publishedScenes[1]], emptyState())).toBeUndefined();
+    expect(recommendNext(scene, [scene, duplicate, unpublished], emptyState())).toBeUndefined();
   });
   it('chooses the explicit real next scene in the same topic', () => {
     const next = { ...scene, id: 'test-next', image: 'distinct-test-only.webp' };
     expect(recommendNext({ ...scene, nextSceneId: next.id }, [scene, next], emptyState())?.id).toBe(next.id);
   });
-  it('10. returns an explicit no-next state when a topic has one real picture', () => {
-    expect(recommendNext(scene, scenes, emptyState())).toBeUndefined();
+  it('10. returns no-next only if no other real picture is available', () => {
+    expect(recommendNext(scene, [scene], emptyState())).toBeUndefined();
   });
 });
 describe('storage validation', () => {

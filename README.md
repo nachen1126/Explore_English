@@ -31,7 +31,7 @@ CI and the existing Pages workflow run this chain. A successful push to main pub
 
 ## Available content
 
-Kitchen, Supermarket, Airport and Gym each have 10 independently audited words/hotspots. They use **clearly marked development artwork**. Final artwork has not been supplied; development image proportions are preserved without cropping. All remaining planned topics are unpublished. There is no duplicate Scene 2.
+Six scenes are published. Kitchen · Cooking and Airport · Departures use new final 1536 × 1024 artwork and ten image-specific words each. The four original Kitchen, Supermarket, Airport and Gym scenes remain available with their stable scene and vocabulary IDs so existing discoveries and challenge history continue to load. Every visible instance of a repeated target can be selected; polygon regions keep large surfaces from covering nearby small objects. All remaining planned topics stay unpublished.
 
 - [Full image briefs and missing asset list](docs/scene-asset-spec.md)
 - [Architecture, data model and storage migration](docs/architecture.md)
@@ -39,10 +39,11 @@ Kitchen, Supermarket, Airport and Gym each have 10 independently audited words/h
 - [Acceptance and browser verification](docs/validation.md)
 - [Category, keyboard, hints and speech acceptance — 2026-09-06](docs/interaction-validation.md)
 - [Single-screen layout, Produce Enter and score feedback — 2026-09-08](docs/screen-validation.md)
+- [Responsive layout, hotspot and practice verification — 2026-09-12](docs/experience-validation.md)
 
 ## Content workflow
 
-Add an independent scene and vocabulary record in `src/content.ts`, not a generic word template. Final images must be 1536×1024 and optimized WebP/AVIF under 500 KB. The optional image converter uses Pillow:
+Add an independent scene and vocabulary record in `src/content.ts` or `src/specialist-content.ts`, not a generic word template. Shared calibrated geometry helpers live in `src/hotspots.ts`. Final images must be 1536×1024 and optimized WebP/AVIF under 500 KB. The optional image converter uses Pillow:
 
 ```sh
 python -m pip install -r requirements-assets.txt
@@ -59,7 +60,7 @@ Speech synthesis requests British English. Speech recognition is optional and br
 
 Exploration supports **Next word / Enter**. Correct Find It selections advance after 600 ms. In Say It / Type It, Enter submits an unfinished answer; a separate Enter after success or Show answer continues, even with focus in the input. Three valid wrong answers reveal a persistent hint. Assisted answers remain in Needs practice. Microphone errors never count as vocabulary mistakes.
 
-Desktop learning, challenge and result layouts size themselves to the available viewport. Category and review collections use URL-backed pagination; result history opens in a scrollable dialog. Small windows and enlarged text retain normal scrolling. Results choose one of five feedback bands from the exact first-answer ratio, with a separate empty state for missing records. See the latest validation record for tested layouts and device boundaries.
+Desktop learning, challenge and result layouts size themselves to the available viewport. Home shows all ready categories first and keeps the smaller Coming Soon directory below them; no directory pagination hides categories. Result history opens in a scrollable dialog. Small windows and enlarged text retain normal scrolling. Results choose one of five feedback bands from the exact first-answer ratio, with a separate empty state for missing records. Full challenges and weak-word practice remain separately identified and persisted. See the latest validation record for tested layouts and device boundaries.
 
 ## Docker
 

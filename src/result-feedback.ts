@@ -1,6 +1,9 @@
 /** Use the exact first-answer ratio, never the rounded display percentage. */
-export function resultFeedback(score: number, total: number) {
+export function resultFeedback(score: number, total: number, kind: 'full' | 'weak' = 'full') {
   if (!Number.isInteger(score) || !Number.isInteger(total) || total <= 0 || score < 0 || score > total) return null;
+  if (kind === 'weak') return score === total
+    ? { title: 'Great practice!', description: total === 1 ? 'You got your review word right.' : total === 2 ? 'You got both review words right.' : `You got all ${total} review words right.` }
+    : { title: 'Keep going!', description: 'Review the remaining words and try once more.' };
   const ratio = score / total;
   if (score === total) return { title: 'Perfect recall!', description: 'You remembered every word on your first try.' };
   if (ratio >= .8) return { title: 'You know these words well!', description: 'Just a few words left to practise.' };

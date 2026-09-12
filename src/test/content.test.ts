@@ -21,11 +21,11 @@ describe('publication contract', () => {
     expect(categories.every(category => category.chineseTitle.length > 0)).toBe(true);
     expect(new Set(topics.map(topic => topic.id)).size).toBe(topics.length);
     expect(getCategoryScenes('sports-fitness').map(scene => scene.id)).toEqual(['gym-1']);
-    expect(getCategoryScenes('food-dining').map(scene => scene.id).sort()).toEqual(['kitchen-1', 'supermarket-1']);
+    expect(getCategoryScenes('food-dining').map(scene => scene.id).sort()).toEqual(['kitchen-1', 'kitchen-2', 'supermarket-1']);
     expect(getCategoryScenes('beauty-personal-care')).toEqual([]);
     expect(getCategoryScenes('animals')).toEqual([]);
     expect(getCategoryScenes('unknown')).toEqual([]);
-    expect(publishedScenes).toHaveLength(4);
+    expect(publishedScenes).toHaveLength(6);
     publishedScenes.forEach(scene => expect(getSceneCategory(scene)).toBeDefined());
   });
   it('publishes only complete independent scene records and real optimised assets', () => {
@@ -33,7 +33,7 @@ describe('publication contract', () => {
     publishedScenes.forEach(scene => {
       expect(scene.vocabularyIds).toHaveLength(10);
       expect(new Set(scene.vocabularyIds).size).toBe(10);
-      expect(scene.hotspots.map(hotspot => hotspot.vocabularyId).sort()).toEqual([...scene.vocabularyIds].sort());
+      expect([...new Set(scene.hotspots.map(hotspot => hotspot.vocabularyId))].sort()).toEqual([...scene.vocabularyIds].sort());
       expect(scene.nextSceneId).not.toBe(scene.id);
       for (const path of [scene.image, scene.thumbnail]) {
         expect(path).toMatch(/\.(webp|avif)$/);

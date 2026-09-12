@@ -7,6 +7,9 @@ export const hotspotStyle = (hotspot: Hotspot) => ({
   width: `${hotspot.width * 100}%`,
   height: `${hotspot.height * 100}%`,
   borderRadius: hotspot.shape === 'ellipse' ? '50%' : '8px',
+  ...(hotspot.shape === 'polygon' && hotspot.points ? {
+    clipPath: `polygon(${hotspot.points.map(([x, y]) => `${(x - hotspot.x) / hotspot.width * 100}% ${(y - hotspot.y) / hotspot.height * 100}%`).join(',')})`,
+  } : {}),
 });
 export const normalizePoint = (x: number, y: number, bounds: { left: number; top: number; width: number; height: number }) => ({
   x: Math.min(1, Math.max(0, (x - bounds.left) / bounds.width)),

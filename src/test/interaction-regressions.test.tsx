@@ -83,7 +83,7 @@ afterEach(() => { vi.useRealTimers(); });
 describe('category navigation and existing discoveries', () => {
   it('requires Home → Sports → Gym, with working category/home links and browser history', () => {
     mount();
-    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(4);
+    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(8);
     expect(screen.queryByRole('link', { name: /Gym ·/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: '运动篇 · Sports & Fitness' }));
     expect(screen.getByLabelText('Current route')).toHaveTextContent('/category/sports-fitness');

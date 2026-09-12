@@ -64,11 +64,11 @@ function ExploreScene({ sceneId }: { sceneId: string }) {
         }}>{complete ? 'Review an object' : 'Show me a hint'}</button>
           <button className="text-button muted" onClick={() => setRestart(true)}>Start over</button></div>
         <button className="button secondary object-list-button" onClick={() => setObjectsOpen(true)}>All objects · keyboard & small-screen access</button>
-      </aside></div>
-    {complete && <section className="completion-panel"><div><p className="eyebrow">Exploration complete</p><h2>You found them all!</h2></div>
+        {complete && <section className="completion-panel"><h2>You found them all!</h2>
       <div className="button-row"><button className="button primary" onClick={start}>Start Challenge →</button>
         {latestAttempt && !latestAttempt.completedAt && <Link className="button secondary" to={`/challenge/${scene.id}/${latestAttempt.id}`}>Resume Challenge</Link>}
-        <Link className="button secondary" to={`/review/${scene.id}`}>Review Words</Link><Link className="text-button" to={`/category/${category.id}`}>返回本分类 · Category</Link></div></section>}
+        <Link className="button secondary" to={`/review/${scene.id}`}>Review Words</Link></div></section>}
+      </aside></div>
     {restart && <RestartDialog onCancel={() => setRestart(false)} onConfirm={() => {
       dispatch({ type: 'restart', sceneId: scene.id }); setSelected(null); setHint(undefined); setRestart(false);
     }} />}

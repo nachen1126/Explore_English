@@ -10,7 +10,7 @@ import { resultFeedback } from '../result-feedback';
 const kitchen = publishedScenes.find(scene => scene.id === 'kitchen-1')!;
 function mount(path = '/') { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
 function seed(count = 3, firstCorrect?: number) {
-  const attempt = createAttempt(kitchen, kitchen.vocabularyIds.slice(0, count), 'weak', () => .99);
+  const attempt = createAttempt(kitchen, kitchen.vocabularyIds.slice(0, count), count === 10 ? 'full' : 'weak', () => .99);
   attempt.questions.forEach((question, index) => {
     question.mode = 'produce';
     if (firstCorrect !== undefined) {
@@ -89,7 +89,7 @@ describe('Produce Enter state transitions', () => {
     await user.click(screen.getByRole('button', { name: '查看答案 · Show answer' }));
     input().focus();
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('heading', { name: 'Let’s practise together.' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Keep going!' })).toBeVisible();
     expect(screen.getByText('0%')).toBeVisible();
     expect(summarize(loadState(scenes).state.attempts[attempt.id])).toMatchObject({ score: 0, weak: ['kitchen-door'] });
   });
@@ -102,7 +102,7 @@ describe('Produce Enter state transitions', () => {
     await user.type(input(), 'door{Enter}');
     expect(screen.getByRole('button', { name: 'See results →' })).toBeVisible();
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('heading', { name: 'Perfect recall!' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Great practice!' })).toBeVisible();
     expect(screen.getByText('100%')).toBeVisible();
   });
 });
@@ -119,17 +119,17 @@ describe('exact first-answer feedback thresholds', () => {
     expect(resultFeedback(score, total)).toBeNull();
   });
   it.each([0, 2, 3, 4, 5])('keeps title, description, first score and weak count consistent after reload: %i/5', firstCorrect => {
-    const attempt = seed(5, firstCorrect);
+    const attempt = seed(10, firstCorrect * 2);
     const expected = resultFeedback(firstCorrect, 5)!;
     const page = mount(`/result/kitchen-1/${attempt.id}`);
     expect(screen.getByRole('heading', { name: expected.title })).toBeVisible();
     expect(screen.getByText(expected.description)).toBeVisible();
     expect(screen.getByText(`${firstCorrect * 20}%`)).toBeVisible();
-    expect(screen.getByText('Needs practice').parentElement).toHaveTextContent(String(5 - firstCorrect));
+    expect(screen.getByText('Needs practice').parentElement).toHaveTextContent(String(10 - firstCorrect * 2));
     page.unmount();
     mount(`/result/kitchen-1/${attempt.id}`);
     expect(screen.getByRole('heading', { name: expected.title })).toBeVisible();
-    expect(summarize(loadState(scenes).state.attempts[attempt.id]).score).toBe(firstCorrect);
+    expect(summarize(loadState(scenes).state.attempts[attempt.id]).score).toBe(firstCorrect * 2);
   });
   it('shows an empty state when no valid attempt is available', () => {
     mount('/result/kitchen-1');
@@ -139,26 +139,24 @@ describe('exact first-answer feedback thresholds', () => {
 });
 
 describe('paged content and result dialogs', () => {
-  it('makes all categories reachable through pages and preserves the requested page on remount', () => {
-    const page = mount();
-    const first = within(screen.getByRole('main')).getAllByRole('link').map(link => link.getAttribute('aria-label'));
-    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
-    const second = within(screen.getByRole('main')).getAllByRole('link').map(link => link.getAttribute('aria-label'));
-    expect(new Set([...first, ...second])).toEqual(new Set(categories.map(category => `${category.chineseTitle} · ${category.title}`)));
-    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
-    page.unmount(); mount('/?page=2');
-    expect(screen.getByRole('link', { name: '旅行篇 · Travel & Transport' })).toBeVisible();
+  it('shows all eight categories with ready scenes before smaller plans, without pagination', () => {
+    mount('/?page=2');
+    const links = within(screen.getByRole('main')).getAllByRole('link');
+    expect(new Set(links.map(link => link.getAttribute('aria-label')))).toEqual(new Set(categories.map(category => `${category.chineseTitle} · ${category.title}`)));
+    expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: /Ready to explore/ })).getAllByRole('link')).toHaveLength(3);
+    expect(within(screen.getByRole('region', { name: /Coming soon/ })).getAllByRole('link')).toHaveLength(5);
   });
   it('separates planned scenes and keeps all travel plans reachable', () => {
     mount('/category/travel-transport');
-    expect(screen.getByRole('link', { name: /Airport ·/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Airport · Start Exploring' })).toBeVisible();
     fireEvent.click(screen.getByRole('tab', { name: /内容规划/ }));
-    expect(screen.queryByRole('link', { name: /Airport ·/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Airport · Start Exploring' })).not.toBeInTheDocument();
     expect(screen.getByText(/Train Station/)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     expect(screen.getByText(/Beach/)).toBeVisible();
     fireEvent.click(screen.getByRole('tab', { name: /开始学习/ }));
-    expect(screen.getByRole('link', { name: /Airport ·/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Airport · Start Exploring' })).toBeVisible();
   });
   it('puts the complete attempt history in a keyboard-accessible dialog, restoring focus on close', async () => {
     const user = userEvent.setup();
@@ -179,11 +177,11 @@ describe('paged content and result dialogs', () => {
     let small = true;
     let change: (() => void) | undefined;
     vi.stubGlobal('matchMedia', () => ({ matches: small, addEventListener: (_: string, fn: () => void) => { change = fn; }, removeEventListener: vi.fn() }));
-    mount();
-    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(2);
+    mount('/category/food-dining');
+    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(1);
     small = false;
     act(() => change?.());
-    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(4);
+    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(2);
   });
   it('removes only the Home navigation arrow and keeps scene and next arrows', async () => {
     const user = userEvent.setup();
