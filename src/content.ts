@@ -1,5 +1,6 @@
 import type { Scene, VocabularyItem } from './types';
 import { calibratedHotspots } from './hotspots';
+import { expandedScenes, expandedVocabulary } from './expanded-content';
 import { specialistScenes, specialistVocabulary } from './specialist-content';
 
 // Legacy scene and vocabulary IDs stay immutable so stored progress and attempts remain valid.
@@ -676,5 +677,5 @@ const legacyScenes: Scene[] = [
   }
 ].map(scene => ({ ...scene, assetStatus: scene.assetStatus as Scene['assetStatus'], hotspots: calibratedHotspots[scene.id] }));
 
-export const readyVocabulary = [...legacyVocabulary, ...specialistVocabulary];
-export const readyScenes = [...legacyScenes, ...specialistScenes];
+export const readyVocabulary = [...legacyVocabulary, ...specialistVocabulary, ...expandedVocabulary];
+export const readyScenes = [...legacyScenes, ...specialistScenes, ...expandedScenes];

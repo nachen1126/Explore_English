@@ -12,12 +12,12 @@ export const categories: Category[] = [
 ];
 
 const topicGroups: [string, [string, string, string][]][] = [
-  ['sports-fitness', [['gym', 'Gym', '健身房'], ['yoga-studio', 'Yoga Studio', '瑜伽室'], ['running', 'Running', '跑步'], ['badminton', 'Badminton', '羽毛球'], ['outdoor-sports', 'Outdoor Sports', '户外运动']]],
-  ['beauty-personal-care', [['dressing-table', 'Dressing Table', '化妆台'], ['skin-care', 'Skin Care', '护肤'], ['body-care', 'Body Care', '洗护'], ['hair-salon', 'Hair Salon', '美发']]],
-  ['food-dining', [['kitchen', 'Kitchen', '厨房'], ['supermarket', 'Supermarket', '超市'], ['restaurant', 'Restaurant', '餐厅'], ['cafe', 'Café', '咖啡馆'], ['bakery', 'Bakery', '烘焙'], ['local-market', 'Local Market', '集市']]],
-  ['animals', [['farm', 'Farm', '农场'], ['zoo', 'Zoo', '动物园'], ['underwater', 'Underwater World', '海洋动物'], ['pets', 'Pets', '宠物']]],
+  ['sports-fitness', [['swimming-pool', 'Swimming Pool', '游泳池'], ['gym', 'Gym', '健身房'], ['yoga-studio', 'Yoga Studio', '瑜伽室'], ['running', 'Running', '跑步'], ['badminton', 'Badminton Court', '羽毛球场'], ['outdoor-sports', 'Outdoor Sports', '户外运动']]],
+  ['beauty-personal-care', [['skin-care', 'Skincare', '护肤'], ['dressing-table', 'Dressing Table', '化妆台'], ['hair-washing', 'Hair Washing', '洗头'], ['body-care', 'Body Care', '洗护'], ['hair-salon', 'Hair Salon', '美发店']]],
+  ['food-dining', [['kitchen', 'Kitchen', '厨房'], ['supermarket', 'Supermarket', '超市'], ['restaurant', 'Restaurant', '餐厅'], ['cafe', 'Café', '咖啡馆'], ['bar', 'Bar', '酒吧'], ['bakery', 'Bakery', '烘焙'], ['local-market', 'Local Market', '集市']]],
+  ['animals', [['pet-shop', 'Pet Shop', '宠物店'], ['farm', 'Farm', '农场'], ['zoo', 'Zoo', '动物园'], ['underwater', 'Underwater World', '海底世界'], ['pets', 'Pets', '宠物']]],
   ['home-living', [['living-room', 'Living Room', '客厅'], ['bedroom', 'Bedroom', '卧室'], ['bathroom', 'Bathroom', '浴室'], ['laundry-room', 'Laundry Room', '洗衣房']]],
-  ['travel-transport', [['airport', 'Airport', '机场'], ['train-station', 'Train Station', '火车站'], ['metro-station', 'Metro Station', '地铁站'], ['hotel', 'Hotel', '酒店'], ['city-street', 'City Street', '城市街道'], ['park', 'Park', '公园'], ['camping', 'Camping', '露营'], ['beach', 'Beach', '海滩']]],
+  ['travel-transport', [['airport', 'Airport', '机场'], ['hotel', 'Hotel Room', '酒店房间'], ['train-station', 'Train Station', '火车站'], ['metro-station', 'Metro Station', '地铁站'], ['aeroplane-interior', 'Inside an Aeroplane', '飞机内部'], ['city-street', 'City Street', '城市街道'], ['park', 'Park', '公园'], ['camping', 'Camping', '露营'], ['beach', 'Beach', '海滩']]],
   ['study-work', [['office', 'Office', '办公室'], ['meeting-room', 'Meeting Room', '会议室'], ['classroom', 'Classroom', '教室'], ['library', 'Library', '图书馆']]],
   ['health-wellbeing', [['pharmacy', 'Pharmacy', '药房'], ['clinic', 'Clinic', '诊所'], ['hospital', 'Hospital', '医院']]],
 ];

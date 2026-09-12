@@ -111,7 +111,7 @@ describe('multiple visible regions of one object', () => {
 describe('recommendation hierarchy and separately saved results', () => {
   it('goes to a real next topic scene, then the same category, then other categories', () => {
     const state = emptyState();
-    expect(recommendNext(kitchen, scenes, state)?.id).toBe('airport-2');
+    expect(recommendNext(kitchen, scenes, state)?.id).toBe('supermarket-2');
     const sameCategory = { ...kitchen, id: 'test-food', topicId: 'restaurant', image: 'scenes/test-food.webp' };
     expect(recommendNext(kitchen, [kitchen, sameCategory, getScene('airport-2')!], state)?.id).toBe('test-food');
   });
@@ -155,7 +155,7 @@ describe('recommendation hierarchy and separately saved results', () => {
     saveState({...emptyState(),scenes:{'gym-1':{explored:['gym-chair'],lastVisited:30},'kitchen-2':{explored:['kitchen-fridge'],lastVisited:10}}});
     mount('/');
     expect(screen.getByRole('link',{name:'Continue Kitchen · Cooking →'})).toHaveAttribute('href','/scene/kitchen-2');
-    expect(within(screen.getByRole('region',{name:/Ready to explore/})).getAllByRole('img')).toHaveLength(2);
+    expect(within(screen.getByRole('region',{name:/Ready to explore/})).getAllByRole('img')).toHaveLength(6);
     expect(screen.queryByRole('button',{name:'Next page'})).not.toBeInTheDocument();
     expect(screen.queryByText(/Development artwork/)).not.toBeInTheDocument();
   });

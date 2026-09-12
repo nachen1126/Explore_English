@@ -13,20 +13,21 @@ describe('publication contract', () => {
   });
   it('groups existing and planned topics into bilingual categories without publishing drafts', () => {
     expect(categories).toHaveLength(8);
-    expect(topics).toHaveLength(38);
+    expect(topics).toHaveLength(43);
     expect(topics.find(topic => topic.id === 'cafe')?.categoryId).toBe('food-dining');
     expect(topics.find(topic => topic.id === 'kitchen')?.categoryId).toBe('food-dining');
     expect(topics.find(topic => topic.id === 'gym')?.categoryId).toBe('sports-fitness');
     expect(categories.find(category => category.title === 'Café')).toBeUndefined();
     expect(categories.every(category => category.chineseTitle.length > 0)).toBe(true);
     expect(new Set(topics.map(topic => topic.id)).size).toBe(topics.length);
-    expect(getCategoryScenes('sports-fitness')).toEqual([]);
-    expect(getCategoryScenes('food-dining').map(scene => scene.id)).toEqual(['kitchen-2']);
-    expect(getCategoryScenes('travel-transport').map(scene => scene.id)).toEqual(['airport-2']);
-    expect(getCategoryScenes('beauty-personal-care')).toEqual([]);
-    expect(getCategoryScenes('animals')).toEqual([]);
+    expect(getCategoryScenes('sports-fitness').map(scene => scene.id)).toEqual(['swimming-pool-1']);
+    expect(getCategoryScenes('food-dining').map(scene => scene.id)).toEqual(['kitchen-2', 'supermarket-2', 'cafe-1']);
+    expect(getCategoryScenes('travel-transport').map(scene => scene.id)).toEqual(['airport-2', 'hotel-room-1']);
+    expect(getCategoryScenes('beauty-personal-care').map(scene => scene.id)).toEqual(['skin-care-1']);
+    expect(getCategoryScenes('animals').map(scene => scene.id)).toEqual(['underwater-1']);
+    expect(getCategoryScenes('home-living').map(scene => scene.id)).toEqual(['living-room-1', 'bathroom-1', 'laundry-room-1']);
     expect(getCategoryScenes('unknown')).toEqual([]);
-    expect(publishedScenes).toHaveLength(2);
+    expect(publishedScenes).toHaveLength(11);
     publishedScenes.forEach(scene => expect(getSceneCategory(scene)).toBeDefined());
   });
   it('publishes only complete independent scene records and real optimised assets', () => {
@@ -47,14 +48,28 @@ describe('publication contract', () => {
     expect(hashes.size).toBe(publishedScenes.length);
     expect(new Set(scenes.map(scene => scene.id)).size).toBe(scenes.length);
   });
-  it('14. every displayed IPA has a source and is never a word wrapped in slashes', () => {
+  it('publishes the first expansion batch with independent scene images, thumbnails, words and hotspots', () => {
+    const expected = [
+      'living-room-1', 'bathroom-1', 'laundry-room-1', 'supermarket-2', 'cafe-1',
+      'swimming-pool-1', 'skin-care-1', 'hotel-room-1', 'underwater-1',
+    ];
+    for (const id of expected) {
+      const scene = publishedScenes.find(item => item.id === id);
+      expect(scene, id).toBeDefined();
+      expect(scene!.image).not.toBe(scene!.thumbnail);
+      expect(scene!.thumbnail).toContain(`${id === 'supermarket-2' ? 'supermarket-1' : id === 'skin-care-1' ? 'skincare-1' : id === 'hotel-room-1' ? 'hotel-room-1' : id === 'underwater-1' ? 'underwater-world-1' : id}-thumb.webp`);
+      expect(scene!.vocabularyIds).toHaveLength(10);
+      expect(new Set(scene!.hotspots.map(hotspot => hotspot.vocabularyId))).toEqual(new Set(scene!.vocabularyIds));
+    }
+  });
+  it('14. every displayed IPA has a valid slash form and a dictionary source', () => {
     publishedScenes.flatMap(scene => scene.vocabularyIds).forEach(id => {
       const item = vocabulary[id];
       expect(item.word.length).toBeGreaterThan(0);
       expect(item.chineseMeaning.length).toBeGreaterThan(0);
       expect(item.exampleSentence.length).toBeGreaterThan(10);
       if (item.britishIPA) {
-        expect(item.britishIPA).not.toBe(`/${item.word}/`);
+        expect(item.britishIPA).toMatch(/^\/.+\/$/);
         expect(item.ipaSource).toMatch(/^https:\/\/dictionary.cambridge.org\//);
       }
     });

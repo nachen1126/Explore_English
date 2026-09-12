@@ -108,7 +108,7 @@ describe('category navigation and existing discoveries', () => {
     saveState(oldState);
     let page = mount('/category/sports-fitness');
     expect(screen.queryByText(/saved records could not/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Coming soon · 敬请期待' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Swimming Pool · Start Exploring' })).toBeVisible();
     expect(screen.queryByRole('link', { name: /Gym ·/ })).not.toBeInTheDocument();
     page.unmount();
     page = mount('/scene/gym-1');
@@ -132,10 +132,10 @@ describe('category navigation and existing discoveries', () => {
     expect(screen.getByRole('link', { name: 'Back Home' })).toBeVisible();
   });
 
-  it('shows empty categories as forthcoming plans without fake scene links or images', () => {
-    mount('/category/animals');
+  it('shows an empty category as forthcoming plans without fake scene links or images', () => {
+    mount('/category/study-work');
     expect(screen.getByRole('heading', { name: 'Coming soon · 敬请期待' })).toBeVisible();
-    expect(screen.getByText(/Farm/)).toBeVisible();
+    expect(screen.getByText(/Office/)).toBeVisible();
     expect(within(screen.getByRole('main')).queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });

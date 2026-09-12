@@ -148,8 +148,8 @@ describe('results and navigation', () => {
     const user = userEvent.setup();
     const attempt = finishAttempt();
     mount(`/result/${scene.id}/${attempt.id}`);
-    await user.click(screen.getByRole('link', { name: 'Next: Airport · Departures · 10 words →' }));
-    expect(screen.getByRole('heading', { name: 'Airport · Departures' })).toBeVisible();
+    await user.click(screen.getByRole('link', { name: 'Next: Supermarket · 10 words →' }));
+    expect(screen.getByRole('heading', { name: 'Supermarket' })).toBeVisible();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   it('Practice Weak Words starts an attempt containing only failed words', async () => {
@@ -169,7 +169,7 @@ describe('results and navigation', () => {
     expect(within(main).getAllByRole('link')).toHaveLength(8);
     expect(within(main).queryByRole('link', { name: /Café|Underwater|Living Room/ })).not.toBeInTheDocument();
     page.unmount();
-    mount('/scene/cafe-1');
+    mount('/scene/bar-1');
     expect(screen.getByRole('heading', { name: 'This scene is temporarily unavailable.' })).toBeVisible();
   });
   it('shows the invalid-route page', () => {
