@@ -10,8 +10,8 @@ export function HomePage() {
   const last = Object.entries(state.scenes).filter(([id]) => getScene(id))
     .sort((a, b) => b[1].lastVisited - a[1].lastVisited)[0];
   const lastScene = last ? getScene(last[0]) : undefined;
-  return <Layout className="directory-main"><section className="home-heading"><p className="eyebrow">English, in the places you know</p>
-    <h1>从一个大类开始 <span className="heading-translation">Choose your world.</span></h1>
+  return <Layout className="directory-main"><section className="home-heading">
+    <h1>Choose your world.</h1>
     <p>选择场景，看见物品，记住单词。</p>
   </section>
     {lastScene && <section className="continue-learning" aria-labelledby="continue-title">

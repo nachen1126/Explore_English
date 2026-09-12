@@ -31,7 +31,7 @@ CI and the existing Pages workflow run this chain. A successful push to main pub
 
 ## Available content
 
-Six scenes are published. Kitchen · Cooking and Airport · Departures use new final 1536 × 1024 artwork and ten image-specific words each. The four original Kitchen, Supermarket, Airport and Gym scenes remain available with their stable scene and vocabulary IDs so existing discoveries and challenge history continue to load. Every visible instance of a repeated target can be selected; polygon regions keep large surfaces from covering nearby small objects. All remaining planned topics stay unpublished.
+Two scenes are published: Kitchen · Cooking and Airport · Departures. Each uses its own final 1536 × 1024 artwork, thumbnail and ten image-specific words. The original Kitchen (`kitchen-1`), Airport (`airport-1`), Gym (`gym-1`) and development Supermarket (`supermarket-1`) records remain catalogued but unpublished so old URLs and browser storage fail safely. All 36 remaining scene plans stay Coming Soon until matching final artwork and calibrated hotspots are supplied.
 
 - [Full image briefs and missing asset list](docs/scene-asset-spec.md)
 - [Architecture, data model and storage migration](docs/architecture.md)
@@ -58,7 +58,7 @@ React state persists discoveries and complete challenge attempts under `explore-
 
 Speech synthesis requests British English. Speech recognition is optional and browser-dependent; typed answers are always supported. Recordings are not stored.
 
-Exploration supports **Next word / Enter**. Correct Find It selections advance after 600 ms. In Say It / Type It, Enter submits an unfinished answer; a separate Enter after success or Show answer continues, even with focus in the input. Three valid wrong answers reveal a persistent hint. Assisted answers remain in Needs practice. Microphone errors never count as vocabulary mistakes.
+Exploration supports **Next word / Enter**. Correct Find It selections advance after 600 ms. In Say It / Type It, Enter submits an unfinished answer; a separate Enter after success continues, even with focus in the input. Three valid wrong answers reveal a persistent hint. Show answer clears and unlocks the field, and the learner must enter the correct word before continuing; the result remains Needs practice. Microphone errors never count as vocabulary mistakes. Speech recognition uses the browser's single-utterance end detection and has no manual Stop control.
 
 Desktop learning, challenge and result layouts size themselves to the available viewport. Home shows all ready categories first and keeps the smaller Coming Soon directory below them; no directory pagination hides categories. Result history opens in a scrollable dialog. Small windows and enlarged text retain normal scrolling. Results choose one of five feedback bands from the exact first-answer ratio, with a separate empty state for missing records. Full challenges and weak-word practice remain separately identified and persisted. See the latest validation record for tested layouts and device boundaries.
 

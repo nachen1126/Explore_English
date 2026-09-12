@@ -7,7 +7,7 @@ import { categories, publishedScenes, scenes, vocabulary } from '../data';
 import { createAttempt, emptyState, loadState, saveState, summarize } from '../logic';
 import { resultFeedback } from '../result-feedback';
 
-const kitchen = publishedScenes.find(scene => scene.id === 'kitchen-1')!;
+const kitchen = publishedScenes.find(scene => scene.id === 'kitchen-2')!;
 function mount(path = '/') { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
 function seed(count = 3, firstCorrect?: number) {
   const attempt = createAttempt(kitchen, kitchen.vocabularyIds.slice(0, count), count === 10 ? 'full' : 'weak', () => .99);
@@ -28,8 +28,8 @@ describe('Produce Enter state transitions', () => {
   it('submits once, retains input focus, and needs a second Enter to advance', async () => {
     const user = userEvent.setup();
     const attempt = seed();
-    mount(`/challenge/kitchen-1/${attempt.id}`);
-    await user.type(input(), 'door{Enter}');
+    mount(`/challenge/kitchen-2/${attempt.id}`);
+    await user.type(input(), 'fridge{Enter}');
     expect(screen.getByText('1 / 3')).toBeVisible();
     expect(screen.getByText('Correct.')).toBeVisible();
     expect(input()).toHaveFocus();
@@ -46,11 +46,11 @@ describe('Produce Enter state transitions', () => {
   it('wrong answers keep submitting; composition and held Enter cannot advance a solved question', async () => {
     const user = userEvent.setup();
     const attempt = seed();
-    mount(`/challenge/kitchen-1/${attempt.id}`);
+    mount(`/challenge/kitchen-2/${attempt.id}`);
     await user.type(input(), 'wrong{Enter}{Enter}');
     expect(loadState(scenes).state.attempts[attempt.id].questions[0].answers).toHaveLength(2);
     expect(screen.getByText('1 / 3')).toBeVisible();
-    await user.clear(input()); await user.type(input(), 'door');
+    await user.clear(input()); await user.type(input(), 'fridge');
     await user.keyboard('{Enter>4}');
     expect(screen.getByText('Correct.')).toBeVisible();
     expect(screen.getByText('1 / 3')).toBeVisible();
@@ -70,36 +70,41 @@ describe('Produce Enter state transitions', () => {
   it('suppresses a focused Next button’s native activation and duplicate keydown across question changes', async () => {
     const user = userEvent.setup();
     const attempt = seed();
-    mount(`/challenge/kitchen-1/${attempt.id}`);
-    await user.type(input(), 'door{Enter}');
+    mount(`/challenge/kitchen-2/${attempt.id}`);
+    await user.type(input(), 'fridge{Enter}');
     screen.getByRole('button', { name: 'Next word →' }).focus();
     await user.keyboard('{Enter}');
     expect(screen.getByText('2 / 3')).toBeVisible();
-    await user.type(input(), 'window{Enter}');
+    await user.type(input(), 'sink{Enter}');
     fireEvent.keyDown(window, { key: 'Enter' });
     fireEvent.keyDown(window, { key: 'Enter' });
     expect(screen.getByText('3 / 3')).toBeVisible();
     fireEvent.keyUp(window, { key: 'Enter' });
   });
-  it('Enter after Show answer finishes the last question without a mastery point', async () => {
+  it('Show answer clears and unlocks the input; a correct retry then finishes without a mastery point', async () => {
     const user = userEvent.setup();
     const attempt = seed(1);
-    mount(`/challenge/kitchen-1/${attempt.id}`);
+    mount(`/challenge/kitchen-2/${attempt.id}`);
     await user.type(input(), 'wrong{Enter}{Enter}{Enter}');
     await user.click(screen.getByRole('button', { name: '查看答案 · Show answer' }));
-    input().focus();
+    expect(input()).toBeEnabled();
+    expect(input()).not.toHaveAttribute('readonly');
+    expect(input()).toHaveValue('');
+    expect(screen.queryByRole('button', { name: 'See results →' })).not.toBeInTheDocument();
+    await user.type(input(), 'fridge{Enter}');
+    expect(screen.getByText('Correct.')).toBeVisible();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('heading', { name: 'Keep going!' })).toBeVisible();
     expect(screen.getByText('0%')).toBeVisible();
-    expect(summarize(loadState(scenes).state.attempts[attempt.id])).toMatchObject({ score: 0, weak: ['kitchen-door'] });
+    expect(summarize(loadState(scenes).state.attempts[attempt.id])).toMatchObject({ score: 0, weak: ['kitchen-fridge'] });
   });
   it('cleans listeners on departure and handles the final correct answer on a fresh mount', async () => {
     const user = userEvent.setup();
     const attempt = seed(1);
-    const first = mount(`/challenge/kitchen-1/${attempt.id}`);
+    const first = mount(`/challenge/kitchen-2/${attempt.id}`);
     first.unmount();
-    mount(`/challenge/kitchen-1/${attempt.id}`);
-    await user.type(input(), 'door{Enter}');
+    mount(`/challenge/kitchen-2/${attempt.id}`);
+    await user.type(input(), 'fridge{Enter}');
     expect(screen.getByRole('button', { name: 'See results →' })).toBeVisible();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('heading', { name: 'Great practice!' })).toBeVisible();
@@ -121,18 +126,18 @@ describe('exact first-answer feedback thresholds', () => {
   it.each([0, 2, 3, 4, 5])('keeps title, description, first score and weak count consistent after reload: %i/5', firstCorrect => {
     const attempt = seed(10, firstCorrect * 2);
     const expected = resultFeedback(firstCorrect, 5)!;
-    const page = mount(`/result/kitchen-1/${attempt.id}`);
+    const page = mount(`/result/kitchen-2/${attempt.id}`);
     expect(screen.getByRole('heading', { name: expected.title })).toBeVisible();
     expect(screen.getByText(expected.description)).toBeVisible();
     expect(screen.getByText(`${firstCorrect * 20}%`)).toBeVisible();
     expect(screen.getByText('Needs practice').parentElement).toHaveTextContent(String(10 - firstCorrect * 2));
     page.unmount();
-    mount(`/result/kitchen-1/${attempt.id}`);
+    mount(`/result/kitchen-2/${attempt.id}`);
     expect(screen.getByRole('heading', { name: expected.title })).toBeVisible();
     expect(summarize(loadState(scenes).state.attempts[attempt.id]).score).toBe(firstCorrect * 2);
   });
   it('shows an empty state when no valid attempt is available', () => {
-    mount('/result/kitchen-1');
+    mount('/result/kitchen-2');
     expect(screen.getByRole('heading', { name: 'No result here yet.' })).toBeVisible();
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
   });
@@ -141,27 +146,30 @@ describe('exact first-answer feedback thresholds', () => {
 describe('paged content and result dialogs', () => {
   it('shows all eight categories with ready scenes before smaller plans, without pagination', () => {
     mount('/?page=2');
+    expect(screen.getByRole('heading', { name: 'Choose your world.' })).toBeVisible();
+    expect(screen.queryByText('English, in the places you know')).not.toBeInTheDocument();
+    expect(screen.queryByText('从一个大类开始')).not.toBeInTheDocument();
     const links = within(screen.getByRole('main')).getAllByRole('link');
     expect(new Set(links.map(link => link.getAttribute('aria-label')))).toEqual(new Set(categories.map(category => `${category.chineseTitle} · ${category.title}`)));
     expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: /Ready to explore/ })).getAllByRole('link')).toHaveLength(3);
-    expect(within(screen.getByRole('region', { name: /Coming soon/ })).getAllByRole('link')).toHaveLength(5);
+    expect(within(screen.getByRole('region', { name: /Ready to explore/ })).getAllByRole('link')).toHaveLength(2);
+    expect(within(screen.getByRole('region', { name: /Coming soon/ })).getAllByRole('link')).toHaveLength(6);
   });
   it('separates planned scenes and keeps all travel plans reachable', () => {
     mount('/category/travel-transport');
-    expect(screen.getByRole('link', { name: 'Airport · Start Exploring' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Airport · Departures · Start Exploring' })).toBeVisible();
     fireEvent.click(screen.getByRole('tab', { name: /内容规划/ }));
-    expect(screen.queryByRole('link', { name: 'Airport · Start Exploring' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Airport · Departures · Start Exploring' })).not.toBeInTheDocument();
     expect(screen.getByText(/Train Station/)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     expect(screen.getByText(/Beach/)).toBeVisible();
     fireEvent.click(screen.getByRole('tab', { name: /开始学习/ }));
-    expect(screen.getByRole('link', { name: 'Airport · Start Exploring' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Airport · Departures · Start Exploring' })).toBeVisible();
   });
   it('puts the complete attempt history in a keyboard-accessible dialog, restoring focus on close', async () => {
     const user = userEvent.setup();
     const attempt = seed(10, 0);
-    mount(`/result/kitchen-1/${attempt.id}`);
+    mount(`/result/kitchen-2/${attempt.id}`);
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     const open = screen.getByRole('button', { name: 'View this attempt' });
     await user.click(open);
@@ -177,20 +185,20 @@ describe('paged content and result dialogs', () => {
     let small = true;
     let change: (() => void) | undefined;
     vi.stubGlobal('matchMedia', () => ({ matches: small, addEventListener: (_: string, fn: () => void) => { change = fn; }, removeEventListener: vi.fn() }));
-    mount('/category/food-dining');
-    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(1);
+    mount('/category/travel-transport?view=plans');
+    expect(within(screen.getByRole('main')).getAllByRole('listitem')).toHaveLength(4);
     small = false;
     act(() => change?.());
-    expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(2);
+    expect(within(screen.getByRole('main')).getAllByRole('listitem')).toHaveLength(6);
   });
   it('removes only the Home navigation arrow and keeps scene and next arrows', async () => {
     const user = userEvent.setup();
     mount();
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
     expect(screen.queryByRole('link', { name: '← Home' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('link', { name: '运动篇 · Sports & Fitness' }));
+    await user.click(screen.getByRole('link', { name: '饮食篇 · Food & Dining' }));
     expect(screen.getByRole('link', { name: '返回首页 · Home' })).toHaveAttribute('href', '/');
-    await user.click(screen.getByRole('link', { name: /Gym ·/ }));
+    await user.click(screen.getByRole('link', { name: /Kitchen · Cooking ·/ }));
     expect(screen.getByRole('link', { name: '← 返回本分类 · Category' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next word →' })).toBeVisible();
   });

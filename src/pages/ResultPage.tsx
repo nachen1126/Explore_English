@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getScene, scenes, vocabulary } from '../data';
 import { createAttempt, isSolved, recommendNext, summarize, weakVocabulary } from '../logic';
 import { useLearning } from '../store';
-import { Layout, MissingPage } from '../components/Layout';
+import { Layout, UnavailableScenePage } from '../components/Layout';
 import { AudioButton } from '../components/WordCard';
 import type { ChallengeAttempt, Scene } from '../types';
 import { Modal } from '../components/Modal';
@@ -13,7 +13,7 @@ export function ResultPage() {
   const { sceneId = '', attemptId } = useParams();
   const { state } = useLearning();
   const scene = getScene(sceneId);
-  if (!scene) return <MissingPage message="This scene is not available yet." />;
+  if (!scene) return <UnavailableScenePage sceneId={sceneId} />;
   const attempt = attemptId ? state.attempts[attemptId] : Object.values(state.attempts)
     .filter(item => item.sceneId === scene.id && item.completedAt && item.kind === 'full').sort((a, b) => b.createdAt - a.createdAt)[0];
   if (!attempt || attempt.sceneId !== scene.id || !attempt.questions.length

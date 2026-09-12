@@ -85,20 +85,18 @@ describe('speech lifecycle', () => {
     const { result } = renderHook(() => useRecognition(vi.fn()));
     act(() => { result.current.start(); result.current.start(); });
     expect(FakeRecognition.instances).toHaveLength(1);
-    act(() => { result.current.stop(); result.current.start(); });
+    act(() => { FakeRecognition.latest.onspeechend?.(); result.current.start(); });
     expect(FakeRecognition.instances).toHaveLength(1);
     expect(FakeRecognition.latest.start).toHaveBeenCalledOnce();
   });
-  it('stops only once, exposes processing, and delivers a final transcript with a stable session identity', () => {
+  it('uses native speech end without manual stop and delivers a final transcript with a stable session identity', () => {
     const transcript = vi.fn();
     const { result } = renderHook(() => useRecognition(transcript));
     act(() => result.current.start());
     const active = FakeRecognition.latest;
     act(() => active.onstart?.());
-    act(() => { result.current.stop(); result.current.stop(); });
-    expect(active.stop).toHaveBeenCalledOnce();
-    expect(result.current.status).toBe('processing');
-    act(() => active.onstart?.());
+    act(() => active.onspeechend?.());
+    expect(active.stop).not.toHaveBeenCalled();
     expect(result.current.status).toBe('processing');
     act(() => active.onresult?.(resultEvent(' a bottle ')));
     expect(result.current.status).toBe('success');
@@ -179,16 +177,6 @@ describe('speech lifecycle', () => {
     expect(result.current.status).toBe('starting');
     expect(transcript).not.toHaveBeenCalled();
   });
-  it('recovers when native stop throws', () => {
-    const transcript = vi.fn();
-    const { result } = renderHook(() => useRecognition(transcript));
-    act(() => result.current.start());
-    FakeRecognition.latest.stop.mockImplementation(() => { throw new Error('not started'); });
-    act(() => result.current.stop());
-    expect(result.current.status).toBe('error');
-    expect(result.current.error).toContain('could not finish');
-    expect(transcript).not.toHaveBeenCalled();
-  });
   it('cancel invalidates saved callbacks as well as detaching them, even after another session starts', () => {
     const transcript = vi.fn();
     const { result } = renderHook(() => useRecognition(transcript));
@@ -241,10 +229,10 @@ describe('speech lifecycle', () => {
     const { result } = renderHook(() => useRecognition(transcript));
     act(() => result.current.start());
     if (phase === 'listening') act(() => FakeRecognition.latest.onstart?.());
-    if (phase === 'processing') act(() => result.current.stop());
+    if (phase === 'processing') act(() => FakeRecognition.latest.onspeechend?.());
     act(() => vi.advanceTimersByTime(Number(milliseconds)));
     expect(result.current.status).toBe('error');
-    expect(result.current.error).toContain('timed out');
+    expect(result.current.error).toContain(phase === 'listening' ? 'No speech detected' : 'timed out');
     expect(FakeRecognition.latest.abort).toHaveBeenCalledOnce();
     expect(transcript).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);

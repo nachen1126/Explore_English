@@ -1,5 +1,6 @@
 import { Component, useEffect, useRef, type ErrorInfo, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { getCatalogScene, getSceneCategory } from '../data';
 
 export function Layout({ children, back = '/', backLabel = 'Home', className = '' }: { children: ReactNode; back?: string; backLabel?: string; className?: string }) {
   const main = useRef<HTMLElement>(null);
@@ -15,6 +16,16 @@ export function Layout({ children, back = '/', backLabel = 'Home', className = '
 export function MissingPage({ message = 'This page is not available.' }: { message?: string }) {
   return <Layout><section className="empty-state"><p className="eyebrow">A different direction</p><h1>{message}</h1>
     <p>Choose an available scene and keep exploring.</p><Link className="button primary" to="/">Back Home</Link></section></Layout>;
+}
+export function UnavailableScenePage({ sceneId }: { sceneId: string }) {
+  const record = getCatalogScene(sceneId);
+  const category = record ? getSceneCategory(record) : undefined;
+  return <Layout><section className="empty-state"><p className="eyebrow">Scene unavailable · 场景暂不可用</p>
+    <h1>This scene is temporarily unavailable.</h1>
+    <p>Its saved learning records are safe, but this scene is no longer part of the published course.</p>
+    <div className="button-row">{category && <Link className="button primary" to={`/category/${category.id}`}>Back to {category.chineseTitle} · {category.title}</Link>}
+      <Link className={category ? 'button secondary' : 'button primary'} to="/">Back Home</Link></div>
+  </section></Layout>;
 }
 export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };

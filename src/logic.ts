@@ -27,7 +27,10 @@ export const matches = (answer: string, item: VocabularyItem): boolean => {
 };
 export const wrongAttempts = (question: ChallengeQuestion) => question.answers.filter(answer => !answer.correct).length;
 export const hasHint = (question: ChallengeQuestion) => question.mode === 'produce' && wrongAttempts(question) >= 3;
-export const isSolved = (question: ChallengeQuestion) => question.revealedAt !== undefined || question.answers.some(answer => answer.correct);
+/** Legacy reveal-only records remain complete; every newly revealed question sets
+ * answerRequiredAfterReveal and therefore needs a later correct answer. */
+export const isSolved = (question: ChallengeQuestion) => question.answers.some(answer => answer.correct)
+  || (question.revealedAt !== undefined && question.answerRequiredAfterReveal !== true);
 export const currentQuestion = (attempt: ChallengeAttempt) => attempt.questions.find(question => !isSolved(question));
 export const summarize = (attempt: ChallengeAttempt) => {
   const remembered = attempt.questions.filter(question => question.answers[0]?.correct === true && question.revealedAt === undefined && !hasHint(question));
@@ -109,9 +112,10 @@ export function learningReducer(state: LearningState, action: Action): LearningS
       const attempt = state.attempts[action.attemptId];
       const question = attempt && currentQuestion(attempt);
       if (!attempt || attempt.completedAt || question?.id !== action.questionId || !hasHint(question)) return state;
-      const questions = attempt.questions.map(item => item.id === action.questionId ? { ...item, revealedAt: action.at } : item);
+      const questions = attempt.questions.map(item => item.id === action.questionId
+        ? { ...item, revealedAt: action.at, answerRequiredAfterReveal: true } : item);
       return { ...state, attempts: { ...state.attempts, [attempt.id]: {
-        ...attempt, questions, completedAt: questions.every(isSolved) ? action.at : null,
+        ...attempt, questions, completedAt: null,
       } } };
     }
   }
@@ -198,8 +202,12 @@ function validateAttempt(id: string, value: unknown, catalog: Scene[]): Challeng
     }
     const question: ChallengeQuestion = { id: q.id, vocabularyId: q.vocabularyId, mode: q.mode, answers };
     if (q.revealedAt !== undefined) {
-      if (!finite(q.revealedAt) || !hasHint(question) || answers.some(answer => answer.correct)) return null;
+      if (!finite(q.revealedAt) || !hasHint(question)) return null;
       question.revealedAt = q.revealedAt;
+      if (q.answerRequiredAfterReveal !== undefined) {
+        if (q.answerRequiredAfterReveal !== true) return null;
+        question.answerRequiredAfterReveal = true;
+      } else if (answers.some(answer => answer.correct)) return null;
     }
     if (encounteredUnsolved && (answers.length || question.revealedAt !== undefined)) return null;
     if (!isSolved(question)) encounteredUnsolved = true;

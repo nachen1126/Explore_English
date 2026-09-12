@@ -7,7 +7,7 @@ import { getScene, publishedScenes, scenes, vocabulary } from '../data';
 import { createAttempt, emptyState, learningReducer, loadState, recommendNext, saveState, summarize } from '../logic';
 import { resultFeedback } from '../result-feedback';
 
-const kitchen = getScene('kitchen-1')!;
+const kitchen = getScene('kitchen-2')!;
 function mount(path: string) { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
 function desktop(enabled: boolean) {
   vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(hover: hover) and (pointer: fine)' && enabled,
@@ -26,17 +26,17 @@ describe('continuous keyboard answers and picture-only prompts', () => {
     desktop(true);
     const user = userEvent.setup();
     const attempt = typingAttempt();
-    mount(`/challenge/kitchen-1/${attempt.id}`);
+    mount(`/challenge/kitchen-2/${attempt.id}`);
     expect(input()).toHaveFocus();
-    expect(screen.queryByText('门', { exact: true })).not.toBeInTheDocument();
-    await user.keyboard('door{Enter}');
+    expect(screen.queryByText('冰箱', { exact: true })).not.toBeInTheDocument();
+    await user.keyboard('fridge{Enter}');
     expect(screen.getByText('1 / 2')).toBeVisible();
     expect(screen.getByText('Correct.')).toBeVisible();
     await user.keyboard('{Enter}');
     expect(input()).toHaveFocus();
     expect(input()).toHaveValue('');
-    expect(screen.queryByText('窗户', { exact: true })).not.toBeInTheDocument();
-    await user.keyboard('window{Enter}');
+    expect(screen.queryByText('水槽', { exact: true })).not.toBeInTheDocument();
+    await user.keyboard('sink{Enter}');
     expect(screen.getByText('2 / 2')).toBeVisible();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('heading', { name: 'Great practice!' })).toBeVisible();
@@ -47,9 +47,9 @@ describe('continuous keyboard answers and picture-only prompts', () => {
     desktop(false);
     const user = userEvent.setup();
     const attempt = typingAttempt();
-    mount(`/challenge/kitchen-1/${attempt.id}`);
+    mount(`/challenge/kitchen-2/${attempt.id}`);
     expect(input()).not.toHaveFocus();
-    await user.type(input(), 'door{Enter}{Enter}');
+    await user.type(input(), 'fridge{Enter}{Enter}');
     expect(screen.getByText('2 / 2')).toBeVisible();
     expect(input()).not.toHaveFocus();
     expect(input()).toHaveValue('');
@@ -58,14 +58,20 @@ describe('continuous keyboard answers and picture-only prompts', () => {
     desktop(true);
     const user = userEvent.setup();
     const attempt = typingAttempt();
-    mount(`/challenge/kitchen-1/${attempt.id}`);
+    mount(`/challenge/kitchen-2/${attempt.id}`);
     await user.keyboard('{Enter}');
     expect(loadState(scenes).state.attempts[attempt.id].questions[0].answers).toHaveLength(0);
     await user.keyboard('wrong{Enter}{Enter}');
-    expect(screen.queryByText('门', { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText('冰箱', { exact: true })).not.toBeInTheDocument();
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('status', { name: 'Word hint' })).toHaveTextContent('门');
-    await user.clear(input()); await user.keyboard('door{Enter}');
+    expect(screen.getByRole('status', { name: 'Word hint' })).toHaveTextContent('冰箱');
+    await user.click(screen.getByRole('button', { name: '查看答案 · Show answer' }));
+    expect(input()).toHaveFocus();
+    expect(input()).toHaveValue('');
+    expect(input()).not.toHaveAttribute('readonly');
+    expect(screen.queryByRole('button', { name: 'Next word →' })).not.toBeInTheDocument();
+    await user.keyboard('fridge{Enter}');
+    expect(screen.getByText('Correct.')).toBeVisible();
     expect(screen.getByRole('status', { name: 'Word hint' })).toBeVisible();
     await user.keyboard('{Enter}');
     expect(screen.queryByRole('status', { name: 'Word hint' })).not.toBeInTheDocument();
@@ -75,9 +81,9 @@ describe('continuous keyboard answers and picture-only prompts', () => {
 });
 
 describe('multiple visible regions of one object', () => {
-  it.each(['kitchen-table', 'kitchen-plant'])('all %s regions discover the same word once and can be revisited', async id => {
+  it.each(['kitchen-chopping-board', 'kitchen-cupboard'])('all %s regions discover the same word once and can be revisited', async id => {
     const user = userEvent.setup();
-    mount('/scene/kitchen-1');
+    mount('/scene/kitchen-2');
     fireEvent.load(screen.getByRole('img', { name: /an illustrated place/ }));
     const buttons = screen.getAllByRole('button', { name: `Explore ${vocabulary[id].word}` });
     expect(buttons.length).toBeGreaterThan(1);
@@ -86,13 +92,13 @@ describe('multiple visible regions of one object', () => {
     expect(loadState(scenes).state.scenes[kitchen.id].explored).toEqual([id]);
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(buttons.length);
   });
-  it.each([0, 1, 2])('accepts plant position %i during Find It with a single settlement', position => {
+  it.each([0, 1, 2, 3, 4])('accepts cupboard position %i during Find It with a single settlement', position => {
     vi.useFakeTimers();
-    const attempt = createAttempt(kitchen, ['kitchen-plant'], 'weak');
+    const attempt = createAttempt(kitchen, ['kitchen-cupboard'], 'weak');
     saveState({ ...emptyState(), attempts: { [attempt.id]: attempt } });
-    mount(`/challenge/kitchen-1/${attempt.id}`);
+    mount(`/challenge/kitchen-2/${attempt.id}`);
     fireEvent.load(screen.getByRole('img', { name: /an illustrated place/ }));
-    const indexes = kitchen.hotspots.map((h, i) => h.vocabularyId === 'kitchen-plant' ? i : -1).filter(i => i >= 0);
+    const indexes = kitchen.hotspots.map((h, i) => h.vocabularyId === 'kitchen-cupboard' ? i : -1).filter(i => i >= 0);
     const button = screen.getByRole('button', { name: `Select object ${indexes[position] + 1}` });
     fireEvent.click(button); fireEvent.click(button);
     expect(screen.getByText('Correct.')).toBeVisible();
@@ -105,16 +111,9 @@ describe('multiple visible regions of one object', () => {
 describe('recommendation hierarchy and separately saved results', () => {
   it('goes to a real next topic scene, then the same category, then other categories', () => {
     const state = emptyState();
-    expect(recommendNext(kitchen, scenes, state)?.id).toBe('kitchen-2');
-    const cooking = getScene('kitchen-2')!;
-    const full = createAttempt(kitchen);
-    full.completedAt = 100;
-    state.attempts[full.id] = full;
-    expect(recommendNext(cooking, scenes, state)?.id).toBe('supermarket-1');
-    const supermarket = createAttempt(getScene('supermarket-1')!); supermarket.completedAt = 200;
-    state.attempts[supermarket.id] = supermarket;
-    expect(recommendNext(cooking, scenes, state)?.topicId).not.toBe('kitchen');
-    expect(recommendNext(cooking, scenes, state)?.topicId).not.toBe('supermarket');
+    expect(recommendNext(kitchen, scenes, state)?.id).toBe('airport-2');
+    const sameCategory = { ...kitchen, id: 'test-food', topicId: 'restaurant', image: 'scenes/test-food.webp' };
+    expect(recommendNext(kitchen, [kitchen, sameCategory, getScene('airport-2')!], state)?.id).toBe('test-food');
   });
   it('every published scene recommendation resolves to a real, different image and route', () => {
     publishedScenes.forEach(scene => {
@@ -136,7 +135,7 @@ describe('recommendation hierarchy and separately saved results', () => {
     state = learningReducer(state, { type: 'start', attempt: weak });
     weak.questions.forEach(q => { state = learningReducer(state, { type: 'answer', attemptId: weak.id, questionId: q.id, record: {answer:vocabulary[q.vocabularyId].word,correct:true,source:'typing',at:100} }); });
     saveState(state);
-    const page = mount(`/result/kitchen-1/${weak.id}`);
+    const page = mount(`/result/kitchen-2/${weak.id}`);
     expect(screen.getByText(/Weak word practice result/)).toBeVisible();
     expect(screen.getByRole('heading', {name:'Great practice!'})).toBeVisible();
     expect(screen.getByText(/Full challenge: 8\/10/)).toBeVisible();
@@ -144,7 +143,7 @@ describe('recommendation hierarchy and separately saved results', () => {
     expect(screen.getByText('80%')).toBeVisible();
     expect(screen.getByText('Remembered').parentElement).toHaveTextContent('8');
     expect(screen.getByText('Needs practice').parentElement).toHaveTextContent('2');
-    page.unmount(); mount('/result/kitchen-1');
+    page.unmount(); mount('/result/kitchen-2');
     expect(screen.getByText('80%')).toBeVisible();
     expect(Object.keys(loadState(scenes).state.attempts)).toHaveLength(2);
   });
@@ -153,10 +152,10 @@ describe('recommendation hierarchy and separately saved results', () => {
     expect(resultFeedback(total-1,total,'weak')?.title).toBe('Keep going!');
   });
   it('shows the most recently visited real scene and no home pagination or development labels', () => {
-    saveState({...emptyState(),scenes:{'gym-1':{explored:['gym-chair'],lastVisited:3},'kitchen-1':{explored:['kitchen-door'],lastVisited:10}}});
+    saveState({...emptyState(),scenes:{'gym-1':{explored:['gym-chair'],lastVisited:30},'kitchen-2':{explored:['kitchen-fridge'],lastVisited:10}}});
     mount('/');
-    expect(screen.getByRole('link',{name:'Continue Kitchen →'})).toHaveAttribute('href','/scene/kitchen-1');
-    expect(within(screen.getByRole('region',{name:/Ready to explore/})).getAllByRole('img')).toHaveLength(3);
+    expect(screen.getByRole('link',{name:'Continue Kitchen · Cooking →'})).toHaveAttribute('href','/scene/kitchen-2');
+    expect(within(screen.getByRole('region',{name:/Ready to explore/})).getAllByRole('img')).toHaveLength(2);
     expect(screen.queryByRole('button',{name:'Next page'})).not.toBeInTheDocument();
     expect(screen.queryByText(/Development artwork/)).not.toBeInTheDocument();
   });

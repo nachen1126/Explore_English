@@ -20,12 +20,13 @@ describe('publication contract', () => {
     expect(categories.find(category => category.title === 'Café')).toBeUndefined();
     expect(categories.every(category => category.chineseTitle.length > 0)).toBe(true);
     expect(new Set(topics.map(topic => topic.id)).size).toBe(topics.length);
-    expect(getCategoryScenes('sports-fitness').map(scene => scene.id)).toEqual(['gym-1']);
-    expect(getCategoryScenes('food-dining').map(scene => scene.id).sort()).toEqual(['kitchen-1', 'kitchen-2', 'supermarket-1']);
+    expect(getCategoryScenes('sports-fitness')).toEqual([]);
+    expect(getCategoryScenes('food-dining').map(scene => scene.id)).toEqual(['kitchen-2']);
+    expect(getCategoryScenes('travel-transport').map(scene => scene.id)).toEqual(['airport-2']);
     expect(getCategoryScenes('beauty-personal-care')).toEqual([]);
     expect(getCategoryScenes('animals')).toEqual([]);
     expect(getCategoryScenes('unknown')).toEqual([]);
-    expect(publishedScenes).toHaveLength(6);
+    expect(publishedScenes).toHaveLength(2);
     publishedScenes.forEach(scene => expect(getSceneCategory(scene)).toBeDefined());
   });
   it('publishes only complete independent scene records and real optimised assets', () => {
@@ -40,8 +41,8 @@ describe('publication contract', () => {
         expect(statSync('public/' + path).size).toBeLessThanOrEqual(500_000);
       }
       hashes.add(createHash('sha256').update(readFileSync('public/' + scene.image)).digest('hex'));
-      if (scene.assetStatus === 'final') expect([scene.imageWidth, scene.imageHeight]).toEqual([1536, 1024]);
-      else expect(scene.assetStatus).toBe('development');
+      expect(scene.assetStatus).toBe('final');
+      expect([scene.imageWidth, scene.imageHeight]).toEqual([1536, 1024]);
     });
     expect(hashes.size).toBe(publishedScenes.length);
     expect(new Set(scenes.map(scene => scene.id)).size).toBe(scenes.length);

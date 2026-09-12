@@ -66,6 +66,8 @@ export interface ChallengeQuestion {
   answers: AnswerRecord[];
   /** An assisted completion is never a correct answer or a mastery point. */
   revealedAt?: number;
+  /** New reveals require the learner to type or say the answer before continuing. */
+  answerRequiredAfterReveal?: boolean;
 }
 export interface ChallengeAttempt {
   id: string;

@@ -4,7 +4,7 @@ import { getScene, getSceneCategory, getTopic, vocabulary } from '../data';
 import { createAttempt, weakVocabulary } from '../logic';
 import { useLearning } from '../store';
 import { speak } from '../speech';
-import { Layout, MissingPage, RestartDialog } from '../components/Layout';
+import { Layout, RestartDialog, UnavailableScenePage } from '../components/Layout';
 import { SceneArt } from '../components/SceneArt';
 import { WordCard } from '../components/WordCard';
 import { useLearningEnter } from '../useLearningEnter';
@@ -13,7 +13,7 @@ import { Modal } from '../components/Modal';
 export function ExplorePage() {
   const { sceneId = '' } = useParams();
   const scene = getScene(sceneId);
-  return scene ? <ExploreScene key={scene.id} sceneId={scene.id} /> : <MissingPage message="This scene is not available yet." />;
+  return scene ? <ExploreScene key={scene.id} sceneId={scene.id} /> : <UnavailableScenePage sceneId={sceneId} />;
 }
 function ExploreScene({ sceneId }: { sceneId: string }) {
   const scene = getScene(sceneId)!;

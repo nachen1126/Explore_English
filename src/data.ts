@@ -48,6 +48,7 @@ export function assembleScenes(available: Scene[], plannedTopics: Topic[]): Scen
 }
 export const scenes = assembleScenes(readyScenes, topics);
 export const getScene = (id: string) => scenes.find(scene => scene.id === id && scene.published);
+export const getCatalogScene = (id: string) => scenes.find(scene => scene.id === id);
 export const getTopic = (id: string) => topics.find(topic => topic.id === id);
 export const publishedScenes = scenes.filter(scene => scene.published);
 export const getCategory = (id: string) => categories.find(category => category.id === id);

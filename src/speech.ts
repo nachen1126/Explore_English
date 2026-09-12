@@ -54,7 +54,7 @@ function failureMessage(error: unknown): string {
   if (name === 'NotFoundError') return recognitionErrors['audio-capture'];
   return 'The microphone could not start. Check microphone access in your browser settings, then retry, or type your answer.';
 }
-interface Session { recognition: Recognition; id: string; stopping: boolean }
+interface Session { recognition: Recognition; id: string }
 let sessionSequence = 0;
 
 // Recognition returns a transcript only. The answer form decides when to submit it.
@@ -131,7 +131,7 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
       window.speechSynthesis?.cancel();
       const active = new Constructor();
       const session: Session = {
-        recognition: active, stopping: false,
+        recognition: active,
         id: typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${++sessionSequence}`,
       };
       activeSession.current = session;
@@ -140,9 +140,9 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
       active.continuous = false;
       const isCurrent = () => activeSession.current === session;
       const listening = () => {
-        if (!isCurrent() || session.stopping) return;
+        if (!isCurrent()) return;
         setStatus('listening');
-        deadline(session, 15000, 'Listening timed out. Tap the microphone to retry, or type your answer.');
+        deadline(session, 15000, 'No speech detected. Tap the microphone to retry, or type your answer.');
       };
       const processing = () => {
         if (!isCurrent()) return;
@@ -182,14 +182,5 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
       setError(failureMessage(failure));
     }
   }, [Constructor, unavailableReason, clean, deadline, fail]);
-  const stop = useCallback(() => {
-    const session = activeSession.current;
-    if (!session || session.stopping) return;
-    session.stopping = true;
-    setStatus('processing');
-    deadline(session, 10000, 'Speech recognition timed out. Check your connection and retry, or type your answer.');
-    try { session.recognition.stop(); }
-    catch { fail(session, 'Recording could not finish. Tap the microphone to retry, or type your answer.'); }
-  }, [deadline, fail]);
-  return { supported: !unavailableReason, unavailableReason, status, error, transcript, start, stop, cancel };
+  return { supported: !unavailableReason, unavailableReason, status, error, transcript, start, cancel };
 }

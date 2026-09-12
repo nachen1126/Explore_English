@@ -257,7 +257,7 @@ input[readonly] { background: var(--accent-light); }
 .category-copy p { min-height: 2.8em; margin-bottom: 10px; }
 .category-card-footer { margin-top: 8px; }
 .planned-categories { margin-top: 18px; }
-.planned-categories > div { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.planned-categories > div { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
 .planned-categories a { display: flex; flex-direction: column; gap: 3px; border: 1px solid var(--line); border-radius: 9px; padding: 10px 14px; text-decoration: none; }
 .planned-categories a:hover { background: var(--accent-light); }
 .planned-categories span { font-size: .85rem; color: var(--muted); }

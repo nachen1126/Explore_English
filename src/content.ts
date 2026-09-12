@@ -586,7 +586,7 @@ const legacyScenes: Scene[] = [
     "thumbnail": "scenes/development/kitchen-thumb.webp",
     "imageWidth": 1586,
     "imageHeight": 992,
-    "published": true,
+    "published": false,
     "assetStatus": "development",
     "vocabularyIds": [
       "kitchen-door",
@@ -600,7 +600,7 @@ const legacyScenes: Scene[] = [
       "kitchen-light",
       "kitchen-book"
     ],
-    "nextSceneId": "kitchen-2"
+    "nextSceneId": null
   },
   {
     "id": "airport-1",
@@ -610,7 +610,7 @@ const legacyScenes: Scene[] = [
     "thumbnail": "scenes/development/airport-thumb.webp",
     "imageWidth": 1536,
     "imageHeight": 1024,
-    "published": true,
+    "published": false,
     "assetStatus": "development",
     "vocabularyIds": [
       "airport-door",
@@ -624,7 +624,7 @@ const legacyScenes: Scene[] = [
       "airport-book",
       "airport-clock"
     ],
-    "nextSceneId": "airport-2"
+    "nextSceneId": null
   },
   {
     "id": "gym-1",
@@ -634,7 +634,7 @@ const legacyScenes: Scene[] = [
     "thumbnail": "scenes/development/gym-thumb.webp",
     "imageWidth": 1329,
     "imageHeight": 1183,
-    "published": true,
+    "published": false,
     "assetStatus": "development",
     "vocabularyIds": [
       "gym-exercise-mat",
@@ -658,7 +658,7 @@ const legacyScenes: Scene[] = [
     "thumbnail": "scenes/development/supermarket-thumb.webp",
     "imageWidth": 1536,
     "imageHeight": 1024,
-    "published": true,
+    "published": false,
     "assetStatus": "development",
     "vocabularyIds": [
       "supermarket-orange",

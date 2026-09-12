@@ -16,9 +16,9 @@ function completedWithMistake(): LearningState {
   return state;
 }
 describe('durable discovery', () => {
-  it('migrates renamed versions of the same object without losing its discovery', () => {
+  it('safely ignores discoveries for a removed scene', () => {
     localStorage.setItem(LEGACY_KEY, JSON.stringify({ scenes: { 'airport-1': { explored: ['airport-bottle', 'airport-bag'] } } }));
-    expect(loadState(scenes).state.scenes['airport-1'].explored).toEqual(['airport-water-bottle', 'airport-travel-bag']);
+    expect(loadState(scenes).state.scenes['airport-1']).toBeUndefined();
   });
   it('1. re-entering a scene never clears discoveries', () => {
     let state = learningReducer(emptyState(), { type: 'discover', sceneId: scene.id, vocabularyId: scene.vocabularyIds[0], at: 1 });
@@ -143,11 +143,12 @@ describe('storage validation', () => {
       record: { answer: 'wrong', correct: false, at: i + 1, source: i === 1 ? 'speech' : 'typing', ...(i === 1 ? { recognitionId: 'recording-1' } : {}) } });
     expect(hasHint(state.attempts[attempt.id].questions[0])).toBe(true);
     state = learningReducer(state, { type: 'reveal', attemptId: attempt.id, questionId: q.id, at: 4 });
-    expect(isSolved(state.attempts[attempt.id].questions[0])).toBe(true);
-    expect(state.attempts[attempt.id].completedAt).toBe(4);
-    const lateCorrect = learningReducer(state, { type: 'answer', attemptId: attempt.id, questionId: q.id,
+    expect(isSolved(state.attempts[attempt.id].questions[0])).toBe(false);
+    expect(state.attempts[attempt.id].completedAt).toBeNull();
+    state = learningReducer(state, { type: 'answer', attemptId: attempt.id, questionId: q.id,
       record: { answer: vocabulary[q.vocabularyId].word, correct: true, at: 5, source: 'typing' } });
-    expect(lateCorrect).toBe(state);
+    expect(isSolved(state.attempts[attempt.id].questions[0])).toBe(true);
+    expect(state.attempts[attempt.id].completedAt).toBe(5);
     saveState(state);
     expect(loadState(scenes).state).toEqual(state);
     expect(summarize(loadState(scenes).state.attempts[attempt.id])).toMatchObject({ score: 0, remembered: [], weak: [q.vocabularyId] });

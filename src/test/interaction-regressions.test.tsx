@@ -8,8 +8,7 @@ import { createAttempt, emptyState, loadState, saveState, summarize } from '../l
 import type { Recognition } from '../speech';
 import type { ChallengeAttempt, ChallengeQuestion } from '../types';
 
-const kitchen = publishedScenes.find(scene => scene.id === 'kitchen-1')!;
-const gym = publishedScenes.find(scene => scene.id === 'gym-1')!;
+const kitchen = publishedScenes.find(scene => scene.id === 'kitchen-2')!;
 
 function HistoryControls() {
   const location = useLocation();
@@ -81,42 +80,53 @@ beforeEach(() => { FakeRecognition.instances = []; });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('category navigation and existing discoveries', () => {
-  it('requires Home → Sports → Gym, with working category/home links and browser history', () => {
+  it('requires Home → Food → Kitchen Cooking, with working category/home links and browser history', () => {
     mount();
     expect(within(screen.getByRole('main')).getAllByRole('link')).toHaveLength(8);
     expect(screen.queryByRole('link', { name: /Gym ·/ })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('link', { name: '运动篇 · Sports & Fitness' }));
-    expect(screen.getByLabelText('Current route')).toHaveTextContent('/category/sports-fitness');
+    fireEvent.click(screen.getByRole('link', { name: '饮食篇 · Food & Dining' }));
+    expect(screen.getByLabelText('Current route')).toHaveTextContent('/category/food-dining');
     expect(screen.getByRole('link', { name: '返回首页 · Home' })).toHaveAttribute('href', '/');
-    fireEvent.click(screen.getByRole('link', { name: 'Gym · Start Exploring' }));
-    expect(screen.getByLabelText('Current route')).toHaveTextContent('/scene/gym-1');
-    expect(screen.getByRole('link', { name: '← 返回本分类 · Category' })).toHaveAttribute('href', '/category/sports-fitness');
+    fireEvent.click(screen.getByRole('link', { name: 'Kitchen · Cooking · Start Exploring' }));
+    expect(screen.getByLabelText('Current route')).toHaveTextContent('/scene/kitchen-2');
+    expect(screen.getByRole('link', { name: '← 返回本分类 · Category' })).toHaveAttribute('href', '/category/food-dining');
     expect(screen.getByRole('link', { name: 'Explore English home' })).toHaveAttribute('href', '/');
     fireEvent.click(screen.getByRole('button', { name: 'Browser back' }));
-    expect(screen.getByLabelText('Current route')).toHaveTextContent('/category/sports-fitness');
+    expect(screen.getByLabelText('Current route')).toHaveTextContent('/category/food-dining');
     fireEvent.click(screen.getByRole('button', { name: 'Browser forward' }));
-    expect(screen.getByLabelText('Current route')).toHaveTextContent('/scene/gym-1');
+    expect(screen.getByLabelText('Current route')).toHaveTextContent('/scene/kitchen-2');
     fireEvent.click(screen.getByRole('link', { name: '← 返回本分类 · Category' }));
     fireEvent.click(screen.getByRole('link', { name: '返回首页 · Home' }));
-    expect(screen.getByRole('link', { name: '运动篇 · Sports & Fitness' })).toBeVisible();
+    expect(screen.getByRole('link', { name: '饮食篇 · Food & Dining' })).toBeVisible();
   });
 
-  it('remounts category and scene bookmarks while retaining old schema-2 discoveries', () => {
+  it('ignores removed-scene storage and gives old URLs a category and Home recovery path', () => {
     const oldState = emptyState();
-    oldState.scenes[gym.id] = { explored: gym.vocabularyIds.slice(0, 3), lastVisited: 42 };
+    oldState.scenes['gym-1'] = { explored: ['gym-chair'], lastVisited: 42 };
     saveState(oldState);
     let page = mount('/category/sports-fitness');
-    expect(screen.getByRole('progressbar', { name: 'Gym exploration progress' })).toHaveAttribute('value', '3');
-    expect(screen.getByRole('link', { name: 'Gym · Continue' })).toHaveAttribute('href', '/scene/gym-1');
+    expect(screen.getByRole('heading', { name: 'Coming soon · 敬请期待' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: /Gym ·/ })).not.toBeInTheDocument();
     page.unmount();
     page = mount('/scene/gym-1');
-    loadPicture();
-    expect(screen.getByRole('progressbar', { name: 'Exploration progress' })).toHaveAttribute('value', '3');
-    expect(screen.getByRole('button', { name: `Review ${vocabulary[gym.vocabularyIds[0]].word}` })).toBeEnabled();
-    expect(loadState(scenes).state.scenes[gym.id].explored).toEqual(oldState.scenes[gym.id].explored);
+    expect(screen.getByRole('heading', { name: 'This scene is temporarily unavailable.' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Back to 运动篇 · Sports & Fitness' })).toHaveAttribute('href', '/category/sports-fitness');
+    expect(screen.getByRole('link', { name: 'Back Home' })).toHaveAttribute('href', '/');
+    expect(loadState(scenes).state.scenes['gym-1']).toBeUndefined();
     page.unmount();
-    mount('/category/sports-fitness');
-    expect(screen.getByRole('link', { name: 'Gym · Continue' })).toBeVisible();
+    mount('/challenge/gym-1/old-attempt');
+    expect(screen.getByRole('heading', { name: 'This scene is temporarily unavailable.' })).toBeVisible();
+  });
+
+  it.each([
+    ['kitchen-1', '饮食篇 · Food & Dining'],
+    ['airport-1', '旅行篇 · Travel & Transport'],
+    ['gym-1', '运动篇 · Sports & Fitness'],
+  ])('old scene route %s is unavailable with a working category link', (sceneId, categoryLabel) => {
+    mount(`/scene/${sceneId}`);
+    expect(screen.getByRole('heading', { name: 'This scene is temporarily unavailable.' })).toBeVisible();
+    expect(screen.getByRole('link', { name: `Back to ${categoryLabel}` })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Back Home' })).toBeVisible();
   });
 
   it('shows empty categories as forthcoming plans without fake scene links or images', () => {
@@ -130,11 +140,11 @@ describe('category navigation and existing discoveries', () => {
 
 describe('learning Enter shortcut', () => {
   it('updates one word, highlight, pronunciation and saved progress per physical press; ignores holds and IME', () => {
-    mount('/scene/kitchen-1'); loadPicture();
+    mount('/scene/kitchen-2'); loadPicture();
     const progress = screen.getByRole('progressbar', { name: 'Exploration progress' });
     fireEvent.keyDown(window, { key: 'Enter' });
-    expect(screen.getByRole('region', { name: 'Word card: door' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Review door' })).toHaveClass('is-highlighted');
+    expect(screen.getByRole('region', { name: 'Word card: fridge' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Review fridge' })).toHaveClass('is-highlighted');
     expect(progress).toHaveAttribute('value', '1');
     fireEvent.keyDown(window, { key: 'Enter', repeat: true });
     fireEvent.keyDown(window, { key: 'Enter' });
@@ -147,9 +157,9 @@ describe('learning Enter shortcut', () => {
     fireEvent.compositionEnd(window);
     expect(progress).toHaveAttribute('value', '1');
     pressEnter();
-    expect(screen.getByRole('region', { name: 'Word card: window' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Review window' })).toHaveClass('is-highlighted');
-    expect(screen.getByRole('button', { name: 'Review door' })).not.toHaveClass('is-highlighted');
+    expect(screen.getByRole('region', { name: 'Word card: sink' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Review sink' })).toHaveClass('is-highlighted');
+    expect(screen.getByRole('button', { name: 'Review fridge' })).not.toHaveClass('is-highlighted');
     expect(progress).toHaveAttribute('value', '2');
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
     expect(loadState(scenes).state.scenes[kitchen.id].explored).toEqual(kitchen.vocabularyIds.slice(0, 2));
@@ -157,7 +167,7 @@ describe('learning Enter shortcut', () => {
 
   it('a focused Next button receives one keyboard activation and modal Enter cannot change the underlying word', async () => {
     const user = userEvent.setup();
-    mount('/scene/kitchen-1'); loadPicture();
+    mount('/scene/kitchen-2'); loadPicture();
     screen.getByRole('button', { name: 'Next word →' }).focus();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('progressbar', { name: 'Exploration progress' })).toHaveAttribute('value', '1');
@@ -169,22 +179,22 @@ describe('learning Enter shortcut', () => {
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('button', { name: 'Keep my progress' }));
     fireEvent.click(screen.getByRole('button', { name: 'Next word →' }));
-    expect(screen.getByRole('region', { name: 'Word card: window' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Word card: sink' })).toBeVisible();
   });
 
   it('continues with Enter after clicking a picture object instead of replaying the focused hotspot', async () => {
     const user = userEvent.setup();
-    mount('/scene/kitchen-1'); loadPicture();
-    await user.click(screen.getByRole('button', { name: 'Explore door' }));
-    expect(screen.getByRole('button', { name: 'Review door' })).toHaveFocus();
+    mount('/scene/kitchen-2'); loadPicture();
+    await user.click(screen.getByRole('button', { name: 'Explore fridge' }));
+    expect(screen.getByRole('button', { name: 'Review fridge' })).toHaveFocus();
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('region', { name: 'Word card: window' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Word card: sink' })).toBeVisible();
     expect(screen.getByRole('progressbar', { name: 'Exploration progress' })).toHaveAttribute('value', '2');
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
   });
 
   it('stops at the last word, retains the completion flow, and cleans listeners on navigation and remount', () => {
-    mount('/scene/kitchen-1'); loadPicture();
+    mount('/scene/kitchen-2'); loadPicture();
     for (const id of kitchen.vocabularyIds) {
       pressEnter();
       expect(screen.getByRole('region', { name: `Word card: ${vocabulary[id].word}` })).toBeVisible();
@@ -198,9 +208,9 @@ describe('learning Enter shortcut', () => {
     pressEnter();
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(10);
     fireEvent.click(screen.getByRole('link', { name: '饮食篇 · Food & Dining' }));
-    fireEvent.click(screen.getByRole('link', { name: 'Kitchen · Review' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Kitchen · Cooking · Review' }));
     pressEnter();
-    expect(screen.getByRole('region', { name: 'Word card: door' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Word card: fridge' })).toBeVisible();
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(11);
     expect(loadState(scenes).state.scenes[kitchen.id].explored).toHaveLength(10);
   });
@@ -294,16 +304,20 @@ describe('Find It automatic advancement', () => {
 });
 
 describe('shared wrong-answer hints and voice integration', () => {
-  it('typing + speech + typing reveals a persistent third-error hint; reveal keeps zero mastery and resets on Next', () => {
+  it('typing + speech + typing reveals a persistent hint; Show answer requires a correct retry and keeps zero mastery', () => {
     vi.stubGlobal('SpeechRecognition', FakeRecognition);
     const attempt = seedAttempt(['produce', 'produce']);
     let page = mount(`/challenge/${kitchen.id}/${attempt.id}`); loadPicture();
     typeAnswer('wrong');
     expect(screen.queryByRole('status', { name: 'Word hint' })).not.toBeInTheDocument();
     const recording = startRecording();
+    expect(screen.queryByRole('button', { name: 'Stop recording' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Listening…' })).toBeDisabled();
     const duplicateResult = recording.onresult!;
+    act(() => recording.onspeechend?.());
+    expect(screen.getByText(/Speech detected… Recognising/)).toBeVisible();
     act(() => duplicateResult(result('wrong voice')));
-    expect(screen.getByText('Recognized text:')).toBeVisible();
+    expect(screen.getByText('Recognised text:')).toBeVisible();
     expect(screen.getByRole('textbox', { name: 'Type the English word' })).toHaveValue('wrong voice');
     expect(storedAttempt(attempt).questions[0].answers).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
@@ -316,20 +330,26 @@ describe('shared wrong-answer hints and voice integration', () => {
     expect(storedAttempt(attempt).questions[0].answers.map(answer => answer.source)).toEqual(['typing', 'speech', 'typing']);
     const hint = screen.getByRole('status', { name: 'Word hint' });
     expect(hint).toHaveTextContent(vocabulary[attempt.questions[0].vocabularyId].chineseMeaning);
-    expect(hint).toHaveTextContent('d _ _ _');
-    expect(hint).toHaveTextContent('4 letters');
+    expect(hint).toHaveTextContent('f _ _ _ _ _');
+    expect(hint).toHaveTextContent('6 letters');
     page.unmount();
     page = mount(`/challenge/${kitchen.id}/${attempt.id}`);
     expect(screen.getByRole('status', { name: 'Word hint' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '查看答案 · Show answer' }));
-    expect(screen.getByRole('region', { name: 'Word card: door' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Play pronunciation of door' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Word card: fridge' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Play pronunciation of fridge' })).toBeVisible();
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
     const helped = storedAttempt(attempt);
     expect(helped.questions[0].revealedAt).toBeDefined();
+    expect(helped.questions[0].answerRequiredAfterReveal).toBe(true);
+    expect(screen.getByRole('textbox', { name: 'Type the English word' })).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: 'Type the English word' })).toHaveValue('');
     expect(summarize(helped).remembered).not.toContain(attempt.questions[0].vocabularyId);
     expect(summarize(helped).weak).toContain(attempt.questions[0].vocabularyId);
     expect(summarize(helped).score).toBe(0);
+    expect(screen.queryByRole('button', { name: 'Next word →' })).not.toBeInTheDocument();
+    typeAnswer(vocabulary[attempt.questions[0].vocabularyId].word);
+    expect(screen.getByText('Correct.')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Next word →' }));
     expect(screen.getByText('2 / 2')).toBeVisible();
     expect(screen.queryByRole('status', { name: 'Word hint' })).not.toBeInTheDocument();
@@ -365,7 +385,7 @@ describe('shared wrong-answer hints and voice integration', () => {
     const attempt = seedAttempt(['produce']);
     mount(`/challenge/${kitchen.id}/${attempt.id}`);
     const recording = startRecording();
-    expect(screen.getByText(/Listening…/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Listening…' })).toBeDisabled();
     act(() => recording.onerror?.({ error }));
     expect(screen.getByRole('alert')).toHaveTextContent(message);
     expect(screen.getByRole('button', { name: 'Retry microphone' })).toBeEnabled();
@@ -389,7 +409,7 @@ describe('shared wrong-answer hints and voice integration', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Explore English home' }));
     expect(active.abort).toHaveBeenCalledTimes(1);
     expect(active.onresult).toBeNull();
-    act(() => stale(result('door')));
+    act(() => stale(result('fridge')));
     expect(storedAttempt(attempt).questions[0].answers).toHaveLength(0);
     expect(screen.getByRole('link', { name: '运动篇 · Sports & Fitness' })).toBeVisible();
   });

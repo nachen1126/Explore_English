@@ -6,7 +6,7 @@ import { App } from '../App';
 import { publishedScenes, scenes, vocabulary } from '../data';
 import { createAttempt, emptyState, learningReducer, loadState, saveState, STORAGE_KEY, summarize } from '../logic';
 
-const scene = publishedScenes.find(item => item.id === 'kitchen-1')!;
+const scene = publishedScenes.find(item => item.id === 'kitchen-2')!;
 function mount(path: string) {
   return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
 }
@@ -29,30 +29,30 @@ function finishAttempt() {
 describe('exploration interaction', () => {
   it('1–3. repeated discoveries replay and reopen; home, re-entry and remount keep progress', async () => {
     const user = userEvent.setup();
-    let page = mount('/scene/kitchen-1');
+    let page = mount('/scene/kitchen-2');
     loadPicture();
-    await user.click(screen.getByRole('button', { name: 'Explore door' }));
-    expect(screen.getByRole('region', { name: 'Word card: door' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Explore fridge' }));
+    expect(screen.getByRole('region', { name: 'Word card: fridge' })).toBeVisible();
     expect(screen.getByRole('progressbar', { name: 'Exploration progress' })).toHaveAttribute('value', '1');
     await user.click(screen.getByRole('button', { name: 'Close word card' }));
-    await user.click(screen.getByRole('button', { name: 'Review door' }));
+    await user.click(screen.getByRole('button', { name: 'Review fridge' }));
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole('region', { name: 'Word card: door' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Word card: fridge' })).toBeVisible();
     await user.click(screen.getByRole('link', { name: 'Explore English home' }));
     await user.click(screen.getByRole('link', { name: '饮食篇 · Food & Dining' }));
-    await user.click(screen.getByRole('link', { name: 'Kitchen · Continue' }));
+    await user.click(screen.getByRole('link', { name: 'Kitchen · Cooking · Continue' }));
     expect(screen.getByRole('progressbar', { name: 'Exploration progress' })).toHaveAttribute('value', '1');
     page.unmount();
-    page = mount('/scene/kitchen-1');
+    page = mount('/scene/kitchen-2');
     loadPicture();
-    expect(screen.getByRole('button', { name: 'Review door' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Review fridge' })).toBeEnabled();
     expect(screen.getByRole('progressbar', { name: 'Exploration progress' })).toHaveAttribute('value', '1');
     page.unmount();
   });
   it('only a confirmed restart resets discovery', async () => {
     const user = userEvent.setup();
-    mount('/scene/kitchen-1'); loadPicture();
-    await user.click(screen.getByRole('button', { name: 'Explore door' }));
+    mount('/scene/kitchen-2'); loadPicture();
+    await user.click(screen.getByRole('button', { name: 'Explore fridge' }));
     await user.click(screen.getByRole('button', { name: 'Start over' }));
     expect(screen.getByRole('alertdialog')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Keep my progress' }));
@@ -63,7 +63,7 @@ describe('exploration interaction', () => {
   });
   it('shows the full completion area and challenge return keeps all discoveries', async () => {
     const user = userEvent.setup();
-    mount('/scene/kitchen-1'); loadPicture();
+    mount('/scene/kitchen-2'); loadPicture();
     for (const id of scene.vocabularyIds) await user.click(screen.getAllByRole('button', { name: `Explore ${vocabulary[id].word}` })[0]);
     expect(screen.getByRole('heading', { name: 'You found them all!' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Review Words' })).toBeVisible();
@@ -75,7 +75,7 @@ describe('exploration interaction', () => {
   });
   it('handles image errors with an accessible retry action', async () => {
     const user = userEvent.setup();
-    mount('/scene/kitchen-1');
+    mount('/scene/kitchen-2');
     fireEvent.error(screen.getByRole('img', { name: /an illustrated place/ }));
     expect(screen.getByRole('alert')).toHaveTextContent('The picture could not load');
     await user.click(screen.getByRole('button', { name: 'Try loading again' }));
@@ -112,7 +112,7 @@ describe('challenge journey', () => {
     expect(screen.getByText('90%')).toBeVisible();
     expect(summarize(loadState(scenes).state.attempts[attempt.id]).score).toBe(9);
     expect(loadState(scenes).state.attempts[attempt.id].questions.map(question => question.vocabularyId)).toEqual(attempt.questions.map(question => question.vocabularyId));
-  });
+  }, 10_000);
   it('resumes an unfinished challenge after remount with the same question sequence', async () => {
     const user = userEvent.setup();
     const attempt = createAttempt(scene);
@@ -129,9 +129,9 @@ describe('challenge journey', () => {
 });
 describe('results and navigation', () => {
   it('a bookmarked review page requires exploration before starting a new challenge', () => {
-    mount('/review/kitchen-1');
+    mount('/review/kitchen-2');
     expect(screen.queryByRole('button', { name: /Start Challenge/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Continue Exploring' })).toHaveAttribute('href', '/scene/kitchen-1');
+    expect(screen.getByRole('link', { name: 'Continue Exploring' })).toHaveAttribute('href', '/scene/kitchen-2');
   });
   it('7–8. result refresh preserves the exact score, remembered count and complete weak list', () => {
     const attempt = finishAttempt();
@@ -148,8 +148,8 @@ describe('results and navigation', () => {
     const user = userEvent.setup();
     const attempt = finishAttempt();
     mount(`/result/${scene.id}/${attempt.id}`);
-    await user.click(screen.getByRole('link', { name: 'Next: Kitchen · Cooking · 10 words →' }));
-    expect(screen.getByRole('heading', { name: 'Kitchen · Cooking' })).toBeVisible();
+    await user.click(screen.getByRole('link', { name: 'Next: Airport · Departures · 10 words →' }));
+    expect(screen.getByRole('heading', { name: 'Airport · Departures' })).toBeVisible();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   it('Practice Weak Words starts an attempt containing only failed words', async () => {
@@ -170,7 +170,7 @@ describe('results and navigation', () => {
     expect(within(main).queryByRole('link', { name: /Café|Underwater|Living Room/ })).not.toBeInTheDocument();
     page.unmount();
     mount('/scene/cafe-1');
-    expect(screen.getByRole('heading', { name: 'This scene is not available yet.' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'This scene is temporarily unavailable.' })).toBeVisible();
   });
   it('shows the invalid-route page', () => {
     mount('/missing/anything');

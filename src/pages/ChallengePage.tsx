@@ -5,7 +5,7 @@ import { createAttempt, currentQuestion, hasHint, isSolved, matches, weakVocabul
 import { useLearning } from '../store';
 import { speak, useRecognition } from '../speech';
 import type { ChallengeAttempt, ChallengeQuestion, Scene } from '../types';
-import { Layout, MissingPage } from '../components/Layout';
+import { Layout, MissingPage, UnavailableScenePage } from '../components/Layout';
 import { SceneArt } from '../components/SceneArt';
 import { AudioButton } from '../components/WordCard';
 import { useChallengeEnter } from '../useChallengeEnter';
@@ -16,7 +16,7 @@ export function ChallengePage() {
   const scene = getScene(sceneId);
   const { state, dispatch } = useLearning();
   const navigate = useNavigate();
-  if (!scene) return <MissingPage message="This scene is not available yet." />;
+  if (!scene) return <UnavailableScenePage sceneId={sceneId} />;
   const attempt = attemptId ? state.attempts[attemptId] : undefined;
   if (attemptId && (!attempt || attempt.sceneId !== scene.id)) return <MissingPage message="This challenge could not be found." />;
   if (!attempt) {
@@ -79,6 +79,13 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
       && !document.querySelector('[aria-modal="true"]')) input.current?.focus({ preventScroll: true });
   }, [question.id, question.mode]);
   useEffect(() => {
+    if (!revealed || solved) return;
+    setAnswer('');
+    setInputSource('typing');
+    setRecognitionId(undefined);
+    if (window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) input.current?.focus({ preventScroll: true });
+  }, [question.revealedAt, revealed, solved]);
+  useEffect(() => {
     if (question.mode !== 'find' || !solved) return;
     const timer = window.setTimeout(onNext, 600);
     return () => window.clearTimeout(timer);
@@ -122,26 +129,26 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
             <button className="button primary" type="submit" disabled={!validAnswer || solved || duplicateSpeech}>Check answer</button>
           </form>
           {!solved && (recognition.supported ? <div className="speech-controls">
-            {recording ? <button className="button secondary" onClick={recognition.stop}>Stop recording</button>
-              : recognition.status === 'processing' ? <button className="button secondary" onClick={recognition.cancel}>Cancel recognition</button>
+            {recording ? <button className="button secondary" disabled>Listening…</button>
+              : recognition.status === 'processing' ? <button className="button secondary" disabled>Recognising…</button>
                 : <button className="button secondary" disabled={solved} onClick={recognition.start}>{recognition.status === 'error' || duplicateSpeech ? 'Retry microphone' : 'Use microphone'}</button>}
-            <p role="status" className="speech-status">{({ idle: 'Click to start · 点击开始', starting: 'Requesting microphone… · 正在启动', listening: 'Listening… · 正在聆听', processing: 'Recognizing… · 正在识别', success: 'Transcript ready · 请检查识别文本', error: 'Recognition failed · 识别失败，请重试或输入' })[recognition.status]}</p>
-            {recognition.transcript && <p className="speech-transcript">Recognized text: <strong>{recognition.transcript}</strong></p>}
+            <p role="status" className="speech-status">{({ idle: 'Click to start · 点击开始', starting: 'Starting microphone… · 正在启动', listening: 'Listening… Please say the word. · 正在聆听', processing: 'Speech detected… Recognising… · 正在识别', success: 'Transcript ready · 请检查识别文本', error: 'Recognition failed · 识别失败，请重试或输入' })[recognition.status]}</p>
+            {recognition.transcript && <p className="speech-transcript">Recognised text: <strong>{recognition.transcript}</strong></p>}
             {duplicateSpeech && !solved && <p className="small">This recording has been checked. Record again or edit your answer to retry.</p>}
             {recognition.error && <p className="inline-notice" role="alert">{recognition.error}</p>}
           </div> : <div className="speech-controls"><button className="button secondary" disabled>Microphone unavailable</button>
             <p className="inline-notice">{recognition.unavailableReason}</p></div>)}
         </>}
         <div className="answer-feedback" role="status" aria-live="polite">
-          {lastAnswer && (revealed ? <><strong>Answer shown.</strong><p>This word stays in Needs practice.</p></>
-            : solved ? <><strong>Correct.</strong><p>{question.answers[0].correct ? 'Remembered on your first try.' : 'This word stays in Needs practice.'}</p></>
+          {lastAnswer && (solved ? <><strong>Correct.</strong><p>{question.answers[0].correct && !revealed ? 'Remembered on your first try.' : 'This word stays in Needs practice.'}</p></>
+            : revealed ? <><strong>Answer shown.</strong><p>Type the word yourself to finish. It stays in Needs practice.</p></>
             : assisted ? <strong>A little help is ready.</strong>
               : <><strong>Not quite. Try again.</strong><p>Your first answer is kept.</p></>)}
         </div>
         {assisted && <section className="answer-hint" aria-label="Word hint" role="status"><h2>A little help · 提示</h2>
           <p className="hint-clue"><span lang="zh-CN">{item.chineseMeaning}</span><span className="letter-hint">{item.word.split(' ').map(word => [...word].map((letter, position) => position === 0 ? letter : '_').join(' ')).join(' / ')}</span></p>
           <div className="hint-actions"><p className="small">{item.word.replace(/[^a-z]/gi, '').length} letters · Needs practice</p>
-          {!solved && <button className="button secondary" onClick={() => {
+          {!solved && !revealed && <button className="button secondary" onClick={() => {
             recognition.cancel();
             dispatch({ type: 'reveal', attemptId: attempt.id, questionId: question.id, at: Date.now() });
             if (!speak(item.audioText, () => setAudioError(true))) setAudioError(true);

@@ -58,10 +58,10 @@ Kitchen · Cooking 与 Airport · Departures 已按本规范制作、压缩、�
 
 | 场景 | 当前开发文件 | 原尺寸 | 主图大小 | 状态 |
 |---|---|---|---|---|
-| Kitchen | `development/kitchen.webp` | 1586 × 992 | 105,434 B | 内容已逐项核验；非正式比例，仅临时使用 |
-| Airport | `development/airport.webp` | 1536 × 1024 | 97,226 B | 内容已逐项核验；画风仍待正式素材替换 |
-| Gym | `development/gym.webp` | 1329 × 1183 | 133,662 B | 内容已逐项核验；非正式比例，仅临时使用 |
-| Supermarket | `development/supermarket.webp` | 1536 × 1024 | 158,580 B | 内容已逐项核验；水果较小，有键盘和文字访问入口 |
+| Kitchen (`kitchen-1`) | `development/kitchen.webp` | 1586 × 992 | 105,434 B | 已下线；仅保留旧记录兼容，不再出现在课程入口 |
+| Airport (`airport-1`) | `development/airport.webp` | 1536 × 1024 | 97,226 B | 已下线；仅保留旧记录兼容，不再出现在课程入口 |
+| Gym (`gym-1`) | `development/gym.webp` | 1329 × 1183 | 133,662 B | 已下线；等待匹配的正式图后才能重新发布 |
+| Supermarket (`supermarket-1`) | `development/supermarket.webp` | 1536 × 1024 | 158,580 B | 已下线；等待匹配的正式图后才能重新发布 |
 
 这些开发图片保持原尺寸比例，不裁掉内容或拉伸到 3:2。其原 PNG 留在 `src/assets/scenes` 作为来源记录，不会打包加载到生产页面。Café 图没有清晰咖啡器具，海底图偏离自然海底主题及正式构图要求，均不发布。
 
