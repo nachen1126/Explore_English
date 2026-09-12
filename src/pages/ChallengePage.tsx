@@ -169,8 +169,22 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
             {recognition.transcript && <p className="speech-transcript">Recognised text: <strong>{recognition.transcript}</strong></p>}
             {duplicateSpeech && !solved && <p className="small">This recording has been checked. Record again or edit your answer to retry.</p>}
             {recognition.error && <p className="inline-notice" role="alert">{recognition.error}</p>}
+            {recognition.debugEnabled && <details className="speech-debug" open>
+              <summary>Speech diagnostics · 语音诊断</summary>
+              <p><strong>API:</strong> {recognition.debugInfo.apiName} · <strong>Secure:</strong> {String(recognition.debugInfo.isSecureContext)}</p>
+              <p className="speech-debug-agent">{recognition.debugInfo.userAgent}</p>
+              {recognition.diagnostic && <p className="speech-debug-error"><strong>Speech error: {recognition.diagnostic.code}</strong><br />
+                Source: {recognition.diagnostic.source}<br />Time after start: {recognition.diagnostic.afterMs}ms</p>}
+              <ol>{recognition.debugTimeline.map((entry, position) => <li key={`${position}-${entry}`}>{entry}</li>)}</ol>
+            </details>}
           </div> : <div className="speech-controls"><button className="button secondary" disabled>Microphone unavailable</button>
-            <p className="inline-notice">{recognition.unavailableReason}</p></div>)}
+            <p className="inline-notice">{recognition.unavailableReason}</p>
+            {recognition.debugEnabled && <details className="speech-debug" open>
+              <summary>Speech diagnostics · 语音诊断</summary>
+              <p><strong>API:</strong> {recognition.debugInfo.apiName} · <strong>Secure:</strong> {String(recognition.debugInfo.isSecureContext)}</p>
+              <p className="speech-debug-agent">{recognition.debugInfo.userAgent}</p>
+            </details>}
+          </div>)}
         </>}
         <div className="answer-feedback" role="status" aria-live="polite">
           {lastAnswer && (solved ? <><strong>Correct.</strong><p>{question.answers[0].correct && !revealed ? 'Remembered on your first try.' : 'This word stays in Needs practice.'}</p></>

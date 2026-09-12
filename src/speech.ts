@@ -60,26 +60,29 @@ interface Session {
   recognition: Recognition;
   id: string;
   clickedAt: number;
+  startedAt: number;
   phase: SessionPhase;
   started: boolean;
   speechSeen: boolean;
   ended: boolean;
+  retryCount: number;
 }
+export interface SpeechDiagnostic { code: string; source: string; afterMs: number }
 let sessionSequence = 0;
 const START_TIMEOUT = 5000;
 const SPEECH_START_TIMEOUT = 9000;
 const SPEECH_FINISH_TIMEOUT = 15000;
 const RESULT_TIMEOUT = 5000;
 const END_GRACE_PERIOD = 1500;
+const SPOKEN_END_GRACE_PERIOD = 3000;
 
 function elapsed(session: Session) {
   return `${Math.max(0, Math.round(performance.now() - session.clickedAt))}ms`;
 }
-function debugSpeech(session: Session, event: string, detail?: unknown) {
-  if (!import.meta.env.DEV) return;
-  const message = `[speech] ${session.id} ${elapsed(session)} ${event}`;
-  if (detail === undefined) console.debug(message);
-  else console.debug(message, detail);
+function debugRequested() {
+  const page = new URLSearchParams(window.location.search).get('speechDebug') === '1';
+  const hashQuery = window.location.hash.includes('?') ? window.location.hash.slice(window.location.hash.indexOf('?') + 1) : '';
+  return page || new URLSearchParams(hashQuery).get('speechDebug') === '1';
 }
 
 // Recognition returns a transcript only. The answer form decides when to submit it.
@@ -87,15 +90,30 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
   const activeSession = useRef<Session | null>(null);
   const handler = useRef(onTranscript);
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
+  const [debugEnabled] = useState(debugRequested);
+  const [debugTimeline, setDebugTimeline] = useState<string[]>([]);
+  const [diagnostic, setDiagnostic] = useState<SpeechDiagnostic | null>(null);
   const [status, setStatus] = useState<SpeechStatus>('idle');
   const [error, setError] = useState('');
   const [transcript, setTranscript] = useState('');
   const Constructor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+  const apiName = window.SpeechRecognition ? 'SpeechRecognition'
+    : window.webkitSpeechRecognition ? 'webkitSpeechRecognition' : 'unavailable';
   const unavailableReason = window.isSecureContext === false
     ? 'Voice answers require a secure connection. Open the HTTPS website, or type your answer.'
     : !Constructor ? 'Speech recognition is not available in this browser. Open this page in a browser with speech support, or type your answer.' : '';
   useEffect(() => { handler.current = onTranscript; }, [onTranscript]);
 
+  const appendLine = useCallback((line: string) => {
+    if (debugEnabled && mounted.current) setDebugTimeline(current => [...current.slice(-119), line]);
+  }, [debugEnabled]);
+  const trace = useCallback((session: Session, event: string, detail?: unknown) => {
+    const suffix = detail === undefined ? '' : `: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`;
+    const line = `${elapsed(session)} ${event}${suffix}`;
+    if (import.meta.env.DEV || debugEnabled) console.debug(`[speech] ${session.id} ${line}`);
+    appendLine(line);
+  }, [appendLine, debugEnabled]);
   const clean = useCallback((abort = true, reason = 'cleanup') => {
     if (timeout.current !== null) clearTimeout(timeout.current);
     timeout.current = null;
@@ -104,26 +122,44 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
     activeSession.current = null;
     if (!session) return;
     const active = session.recognition;
-    debugSpeech(session, `cleanup:${reason}`, { abort, phase: session.phase });
+    trace(session, `cleanup: ${reason}`, { abort, phase: session.phase });
     active.onstart = null; active.onaudiostart = null; active.onspeechstart = null; active.onspeechend = null;
     active.onresult = null; active.onerror = null; active.onend = null; active.onaudioend = null;
     if (abort) {
-      try { active.abort(); debugSpeech(session, 'abort'); }
-      catch { debugSpeech(session, 'abort:already-ended'); }
+      try { active.abort(); trace(session, `abort(): ${reason}`); }
+      catch { trace(session, `abort() skipped: ${reason}`, 'already ended'); }
     }
-  }, []);
-  const fail = useCallback((session: Session, message: string, abort = true) => {
+  }, [trace]);
+  const fail = useCallback((session: Session, message: string, options: {
+    abort?: boolean; code: string; source: string;
+  }) => {
     if (activeSession.current !== session) return;
     session.phase = 'failed';
-    debugSpeech(session, 'failed', message);
-    clean(abort, 'failure');
+    const afterMs = Math.max(0, Math.round(performance.now() - session.clickedAt));
+    trace(session, `failure: ${options.code}`, `source=${options.source}`);
+    clean(options.abort ?? true, `${options.source}:${options.code}`);
+    if (mounted.current) setDiagnostic({ code: options.code, source: options.source, afterMs });
     setStatus('error');
     setError(message);
-  }, [clean]);
-  const deadline = useCallback((session: Session, milliseconds: number, message: string, abort = true) => {
+  }, [clean, trace]);
+  const schedule = useCallback((session: Session, milliseconds: number, action: () => void) => {
     if (timeout.current !== null) clearTimeout(timeout.current);
-    timeout.current = setTimeout(() => fail(session, message, abort), milliseconds);
-  }, [fail]);
+    timeout.current = setTimeout(() => {
+      timeout.current = null;
+      if (activeSession.current === session) action();
+    }, milliseconds);
+  }, []);
+  const deadline = useCallback((session: Session, milliseconds: number, message: string, code: string, source: string, abort = true) => {
+    const expire = () => {
+      if (document.visibilityState === 'hidden') {
+        trace(session, `${source} paused`, 'document hidden');
+        schedule(session, milliseconds, expire);
+        return;
+      }
+      fail(session, message, { abort, code, source });
+    };
+    schedule(session, milliseconds, expire);
+  }, [fail, schedule, trace]);
   const cancel = useCallback(() => {
     const session = activeSession.current;
     if (session) session.phase = 'cancelled';
@@ -131,75 +167,108 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
     setStatus('idle');
     setError('');
     setTranscript('');
+    setDiagnostic(null);
   }, [clean]);
 
   useEffect(() => {
-    function leavePage() {
+    mounted.current = true;
+    function pageHidden() {
       const session = activeSession.current;
-      if (session) fail(session, 'Recording stopped because you left the page. Tap the microphone to retry, or type your answer.');
+      if (!session) return;
+      trace(session, 'pagehide');
+      session.phase = 'cancelled';
+      clean(true, 'pagehide');
+      setStatus('idle');
+      setError('');
     }
-    function visibilityChanged() { if (document.visibilityState === 'hidden') leavePage(); }
-    window.addEventListener('pagehide', leavePage);
+    function visibilityChanged() {
+      const session = activeSession.current;
+      if (session) trace(session, `visibilitychange: ${document.visibilityState}`);
+    }
+    window.addEventListener('pagehide', pageHidden);
     document.addEventListener('visibilitychange', visibilityChanged);
     return () => {
-      window.removeEventListener('pagehide', leavePage);
+      window.removeEventListener('pagehide', pageHidden);
       document.removeEventListener('visibilitychange', visibilityChanged);
-      clean();
+      mounted.current = false;
+      const session = activeSession.current;
+      if (session) session.phase = 'cancelled';
+      clean(true, 'component-unmount');
     };
-  }, [clean, fail]);
+  }, [clean, trace]);
 
   const start = useCallback(() => {
     if (activeSession.current) return;
     const clickedAt = performance.now();
+    if (debugEnabled) setDebugTimeline([
+      '0ms button click',
+      `0ms userAgent: ${navigator.userAgent}`,
+      `0ms secure context: ${String(window.isSecureContext)}`,
+      `0ms API: ${apiName}`,
+    ]);
     setTranscript('');
     setError('');
+    setDiagnostic(null);
     if (!Constructor || unavailableReason) {
       setStatus('error');
       setError(unavailableReason);
+      setDiagnostic({ code: !Constructor ? 'unsupported' : 'insecure-context', source: 'preflight', afterMs: 0 });
       return;
     }
-    try {
-      // Stay in the button's user gesture; no asynchronous permission preflight.
-      window.speechSynthesis?.cancel();
-      const active = new Constructor();
+
+    function beginSession(retryCount: number, trigger: string) {
+      const id = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${++sessionSequence}`;
+      let active: Recognition;
+      try { active = new Constructor!(); }
+      catch (failure) {
+        const afterMs = Math.max(0, Math.round(performance.now() - clickedAt));
+        const message = failureMessage(failure);
+        if (debugEnabled) appendLine(`${afterMs}ms start-exception: ${failure instanceof Error ? failure.name : 'unknown'}`);
+        setDiagnostic({ code: 'start-exception', source: 'constructor', afterMs });
+        setStatus('error');
+        setError(message);
+        return;
+      }
       const session: Session = {
         recognition: active,
-        id: typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${++sessionSequence}`,
+        id,
         clickedAt,
+        startedAt: performance.now(),
         phase: 'starting',
         started: false,
         speechSeen: false,
         ended: false,
+        retryCount,
       };
       activeSession.current = session;
-      debugSpeech(session, 'click', { userAgent: navigator.userAgent });
+      trace(session, `session: ${session.id}`, { trigger, retryCount });
       active.lang = 'en-GB';
       active.interimResults = true;
       active.continuous = false;
       const isCurrent = () => activeSession.current === session;
       const listening = (source: string) => {
         if (!isCurrent()) return;
-        debugSpeech(session, source);
+        trace(session, source);
         if (session.ended) return;
         session.started = true;
         if (session.speechSeen) return;
         session.phase = 'listening';
         setStatus('listening');
-        deadline(session, SPEECH_START_TIMEOUT, 'No speech was detected. Speak after the microphone starts, then retry, or type your answer.');
+        deadline(session, SPEECH_START_TIMEOUT, 'No speech was detected. Speak after the microphone starts, then retry, or type your answer.', 'no-speech', 'listening-timeout');
       };
       const speechDetected = (source: string) => {
         if (!isCurrent()) return;
-        debugSpeech(session, source);
+        trace(session, source);
         if (session.ended) return;
         session.started = true;
         session.speechSeen = true;
         session.phase = 'speechDetected';
         setStatus('speechDetected');
-        deadline(session, SPEECH_FINISH_TIMEOUT, 'Speech did not finish normally. Tap the microphone to retry, or type your answer.');
+        deadline(session, SPEECH_FINISH_TIMEOUT, 'Speech did not finish normally. Tap the microphone to retry, or type your answer.', 'speech-timeout', 'speech-detected-timeout');
       };
       const processing = (source: string) => {
         if (!isCurrent()) return;
-        debugSpeech(session, source);
+        trace(session, source);
         if (session.ended) return;
         if (source === 'onspeechend') {
           session.started = true;
@@ -209,7 +278,18 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
         setStatus('processing');
         deadline(session, RESULT_TIMEOUT, session.speechSeen
           ? 'Speech recognition timed out. Check your connection and retry, or type your answer.'
-          : 'No speech was detected. Tap the microphone to retry, or type your answer.');
+          : 'No speech was detected. Tap the microphone to retry, or type your answer.',
+        session.speechSeen ? 'result-timeout' : 'no-speech', source);
+      };
+      const retryPremature = (code: 'premature-end' | 'premature-aborted', source: string) => {
+        if (!isCurrent() || session.retryCount >= 1 || document.visibilityState !== 'visible') return false;
+        trace(session, `auto-restart: ${code}`, `source=${source}`);
+        session.phase = 'cancelled';
+        clean(false, `auto-restart:${code}`);
+        setStatus('starting');
+        setError('');
+        beginSession(session.retryCount + 1, code);
+        return true;
       };
       active.onstart = () => listening('onstart');
       active.onaudiostart = () => listening('onaudiostart');
@@ -222,13 +302,13 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
           const result = event.results[index];
           const text = result[0]?.transcript?.trim() ?? '';
           if (!result?.isFinal) {
-            debugSpeech(session, 'interim-result', text);
+            trace(session, 'interim result', text);
             if (/\p{L}|\p{N}/u.test(text)) speechDetected('interim-speech-detected');
             continue;
           }
-          debugSpeech(session, 'final-result', text);
+          trace(session, 'final result', text);
           if (!/[\p{L}\p{N}]/u.test(text)) {
-            fail(session, 'No words were recognised. Speak clearly and retry, or type your answer.');
+            fail(session, 'No words were recognised. Speak clearly and retry, or type your answer.', { code: 'empty-result', source: 'onresult' });
             return;
           }
           // A single final result resolves this recording. Saved or duplicate callbacks are stale.
@@ -242,35 +322,82 @@ export function useRecognition(onTranscript: (text: string, recognitionId: strin
       };
       active.onerror = event => {
         if (!isCurrent()) return;
-        debugSpeech(session, 'onerror', event.error);
-        fail(session, recognitionErrors[event.error] ?? `Speech recognition failed (${event.error || 'unknown error'}). Retry, or type your answer.`);
+        const code = event.error || 'unknown-error';
+        trace(session, 'onerror', code);
+        const prematureAbort = code === 'aborted' && !session.speechSeen
+          && performance.now() - session.startedAt < 2000;
+        if (prematureAbort) {
+          trace(session, 'premature-aborted', `phase=${session.phase}`);
+          const resolveAbort = () => {
+            if (!isCurrent()) return;
+            if (document.visibilityState === 'hidden') {
+              trace(session, 'premature-aborted waiting', 'document hidden');
+              schedule(session, 500, resolveAbort);
+              return;
+            }
+            if (!retryPremature('premature-aborted', 'onerror')) {
+              fail(session, 'Recording ended unexpectedly while starting. Tap the microphone to retry, or type your answer.', {
+                code: 'premature-aborted', source: 'onerror', abort: false,
+              });
+            }
+          };
+          resolveAbort();
+          return;
+        }
+        fail(session, recognitionErrors[code] ?? `Speech recognition failed (${code}). Retry, or type your answer.`, {
+          code, source: 'onerror',
+        });
       };
       active.onend = () => {
         if (!isCurrent()) return;
-        debugSpeech(session, 'onend', { phase: session.phase });
+        trace(session, 'onend', { phase: session.phase });
         session.ended = true;
-        const message = !session.started
-          ? 'Recording could not start normally. Tap the microphone to retry, or type your answer.'
-          : !session.speechSeen
-            ? 'No speech was detected. Tap the microphone to retry, or type your answer.'
-            : 'No final speech result was received. Tap the microphone to retry, or type your answer.';
-        // Mobile WebKit/Chromium can emit end before delivering its final result.
-        // Keep this session current and its callbacks attached during the grace period.
-        deadline(session, END_GRACE_PERIOD, message, false);
+        if (session.speechSeen) {
+          session.phase = 'processing';
+          setStatus('processing');
+        }
+        const resolveEnd = () => {
+          if (!isCurrent()) return;
+          if (document.visibilityState === 'hidden') {
+            trace(session, 'onend waiting', 'document hidden');
+            schedule(session, 500, resolveEnd);
+            return;
+          }
+          if (!session.started && retryPremature('premature-end', 'onend')) return;
+          const message = !session.started
+            ? 'Recording could not start normally. Tap the microphone to retry, or type your answer.'
+            : !session.speechSeen
+              ? 'No speech was detected. Tap the microphone to retry, or type your answer.'
+              : 'No final speech result was received. Tap the microphone to retry, or type your answer.';
+          fail(session, message, {
+            code: !session.started ? 'premature-end' : !session.speechSeen ? 'no-speech' : 'missing-final-result',
+            source: 'onend', abort: false,
+          });
+        };
+        schedule(session, session.speechSeen ? SPOKEN_END_GRACE_PERIOD : END_GRACE_PERIOD, resolveEnd);
       };
       setStatus('starting');
-      debugSpeech(session, 'recognition.start');
-      active.start();
+      trace(session, 'recognition.start()');
+      try { active.start(); }
+      catch (failure) {
+        const message = failureMessage(failure);
+        trace(session, 'start-exception', failure instanceof Error ? failure.name : 'unknown');
+        fail(session, message, { code: 'start-exception', source: 'recognition.start' });
+        return;
+      }
       // Arm the timeout only after the native start call has run in this same
       // user-gesture stack. A synchronous onstart keeps its listening deadline.
       if (isCurrent() && session.phase === 'starting') {
-        deadline(session, START_TIMEOUT, 'Microphone access timed out. Check the permission prompt and browser settings, then retry, or type your answer.');
+        deadline(session, START_TIMEOUT, 'Microphone access timed out. Check the permission prompt and browser settings, then retry, or type your answer.', 'start-timeout', 'starting-timeout');
       }
-    } catch (failure) {
-      clean(true, 'start-exception');
-      setStatus('error');
-      setError(failureMessage(failure));
     }
-  }, [Constructor, unavailableReason, clean, deadline, fail]);
-  return { supported: !unavailableReason, unavailableReason, status, error, transcript, start, cancel };
+    // No await, promise, timeout or permission preflight may precede this call.
+    window.speechSynthesis?.cancel();
+    beginSession(0, 'button-click');
+  }, [Constructor, unavailableReason, apiName, appendLine, clean, deadline, debugEnabled, fail, schedule, trace]);
+  return {
+    supported: !unavailableReason, unavailableReason, status, error, transcript, start, cancel,
+    debugEnabled, debugTimeline, diagnostic,
+    debugInfo: { userAgent: navigator.userAgent, isSecureContext: window.isSecureContext, apiName },
+  };
 }

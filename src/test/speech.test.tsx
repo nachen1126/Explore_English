@@ -31,7 +31,7 @@ beforeEach(() => {
   vi.stubGlobal('SpeechRecognition', FakeRecognition);
   vi.stubGlobal('webkitSpeechRecognition', undefined);
 });
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); window.history.replaceState({}, '', '/'); });
 
 describe('speech lifecycle', () => {
   it('starts directly from the action, cancels pronunciation first, and waits for native listening events', () => {
@@ -159,7 +159,6 @@ describe('speech lifecycle', () => {
     ['no-speech', 'No speech was detected'],
     ['network', 'internet connection'],
     ['audio-capture', 'close other recording apps'],
-    ['aborted', 'interrupted'],
     ['language-not-supported', 'speech languages'],
     ['unknown-error', 'Speech recognition failed'],
   ])('reports %s as a service failure without submitting an answer and permits retry', (code, message) => {
@@ -178,6 +177,32 @@ describe('speech lifecycle', () => {
     act(() => result.current.start());
     expect(result.current.status).toBe('starting');
     expect(FakeRecognition.instances).toHaveLength(2);
+  });
+  it('auto-restarts one premature browser abort with a new instance, then reports a specific second failure', () => {
+    const transcript = vi.fn();
+    const { result } = renderHook(() => useRecognition(transcript));
+    act(() => result.current.start());
+    const first = FakeRecognition.latest;
+    act(() => first.onerror?.({ error: 'aborted' }));
+    expect(first.abort).not.toHaveBeenCalled();
+    expect(FakeRecognition.instances).toHaveLength(2);
+    expect(result.current.status).toBe('starting');
+    const second = FakeRecognition.latest;
+    expect(second).not.toBe(first);
+    act(() => second.onerror?.({ error: 'aborted' }));
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toContain('ended unexpectedly while starting');
+    expect(result.current.diagnostic).toMatchObject({ code: 'premature-aborted', source: 'onerror' });
+    expect(transcript).not.toHaveBeenCalled();
+  });
+  it('reports a later service abort normally after speech has been detected', () => {
+    const { result } = renderHook(() => useRecognition(vi.fn()));
+    act(() => result.current.start());
+    act(() => FakeRecognition.latest.onspeechstart?.());
+    act(() => FakeRecognition.latest.onerror?.({ error: 'aborted' }));
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toContain('interrupted');
+    expect(result.current.diagnostic).toMatchObject({ code: 'aborted', source: 'onerror' });
   });
   it('handles constructor failures without escaping the click handler', () => {
     vi.stubGlobal('SpeechRecognition', class { constructor() { throw new Error('unavailable'); } });
@@ -242,9 +267,9 @@ describe('speech lifecycle', () => {
     act(() => result.current.start());
     act(() => FakeRecognition.latest.onresult?.(resultEvent('interim only', false)));
     act(() => FakeRecognition.latest.onend?.());
-    expect(result.current.status).toBe('speechDetected');
-    act(() => vi.advanceTimersByTime(1499));
-    expect(result.current.status).toBe('speechDetected');
+    expect(result.current.status).toBe('processing');
+    act(() => vi.advanceTimersByTime(2999));
+    expect(result.current.status).toBe('processing');
     act(() => vi.advanceTimersByTime(1));
     expect(result.current.status).toBe('error');
     expect(result.current.error).toContain('No final speech result');
@@ -270,7 +295,7 @@ describe('speech lifecycle', () => {
     expect(result.current.status).toBe('success');
     expect(vi.getTimerCount()).toBe(0);
   });
-  it('does not report an early mobile onend as an immediate failure', () => {
+  it('auto-restarts one early mobile onend and reports a second premature end only after grace', () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useRecognition(vi.fn()));
     act(() => result.current.start());
@@ -279,8 +304,16 @@ describe('speech lifecycle', () => {
     act(() => vi.advanceTimersByTime(1499));
     expect(result.current.status).toBe('starting');
     act(() => vi.advanceTimersByTime(1));
+    expect(result.current.status).toBe('starting');
+    expect(FakeRecognition.instances).toHaveLength(2);
+    expect(FakeRecognition.instances[0].abort).not.toHaveBeenCalled();
+    act(() => FakeRecognition.latest.onend?.());
+    act(() => vi.advanceTimersByTime(1499));
+    expect(result.current.status).toBe('starting');
+    act(() => vi.advanceTimersByTime(1));
     expect(result.current.status).toBe('error');
     expect(result.current.error).toContain('could not start normally');
+    expect(result.current.diagnostic).toMatchObject({ code: 'premature-end', source: 'onend' });
   });
   it('reports no speech only after an ended listening session exhausts its grace period', () => {
     vi.useFakeTimers();
@@ -336,16 +369,37 @@ describe('speech lifecycle', () => {
     act(() => lateResult(resultEvent('late')));
     expect(transcript).not.toHaveBeenCalled();
   });
-  it.each(['pagehide', 'visibilitychange'])('stops recording on %s and lets the user retry on return', event => {
+  it('silently cancels on pagehide and lets the user retry if the page returns', () => {
     const transcript = vi.fn();
     const { result } = renderHook(() => useRecognition(transcript));
     act(() => result.current.start());
-    if (event === 'visibilitychange') vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
-    act(() => (event === 'pagehide' ? window : document).dispatchEvent(new Event(event)));
+    act(() => window.dispatchEvent(new Event('pagehide')));
     expect(FakeRecognition.latest.abort).toHaveBeenCalledOnce();
-    expect(result.current.status).toBe('error');
-    expect(result.current.error).toContain('left the page');
+    expect(result.current.status).toBe('idle');
+    expect(result.current.error).toBe('');
     expect(transcript).not.toHaveBeenCalled();
+    act(() => result.current.start());
+    expect(FakeRecognition.instances).toHaveLength(2);
+  });
+  it('keeps the same recognition session through hidden and visible transitions', () => {
+    vi.useFakeTimers();
+    let visibility = 'visible';
+    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility as DocumentVisibilityState);
+    const transcript = vi.fn();
+    const { result } = renderHook(() => useRecognition(transcript));
+    act(() => result.current.start());
+    const active = FakeRecognition.latest;
+    visibility = 'hidden';
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    act(() => vi.advanceTimersByTime(5000));
+    expect(active.abort).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('starting');
+    visibility = 'visible';
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    act(() => active.onstart?.());
+    act(() => active.onresult?.(resultEvent('kettle')));
+    expect(result.current.status).toBe('success');
+    expect(transcript).toHaveBeenCalledOnce();
   });
   it('tolerates an already-stopped native abort during cleanup', () => {
     const { result, unmount } = renderHook(() => useRecognition(vi.fn()));
@@ -376,13 +430,46 @@ describe('speech lifecycle', () => {
     act(() => active.onspeechend?.());
     act(() => active.onresult?.(resultEvent('kettle')));
     const timeline = debug.mock.calls.map(call => String(call[0])).join('\n');
-    expect(timeline).toMatch(/\[speech] .+ \d+ms click/);
+    expect(timeline).toMatch(/\[speech] .+ \d+ms session:/);
     expect(timeline).toContain('recognition.start');
     expect(timeline).toContain('onstart');
     expect(timeline).toContain('onaudiostart');
     expect(timeline).toContain('onspeechstart');
     expect(timeline).toContain('onspeechend');
-    expect(timeline).toContain('final-result');
-    expect(timeline).toContain('cleanup:final-result');
+    expect(timeline).toContain('final result');
+    expect(timeline).toContain('cleanup: final-result');
+  });
+  it('does not abort an active session when the transcript callback rerenders', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { result, rerender } = renderHook(({ callback }) => useRecognition(callback), { initialProps: { callback: first } });
+    act(() => result.current.start());
+    const active = FakeRecognition.latest;
+    rerender({ callback: second });
+    expect(active.abort).not.toHaveBeenCalled();
+    expect(FakeRecognition.instances).toHaveLength(1);
+    expect(result.current.status).toBe('starting');
+    act(() => active.onresult?.(resultEvent('sink')));
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledOnce();
+  });
+  it('exposes an opt-in production-style mobile timeline and exact failure source', () => {
+    window.history.replaceState({}, '', '/?speechDebug=1#/challenge/example');
+    let visibility = 'visible';
+    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility as DocumentVisibilityState);
+    const { result } = renderHook(() => useRecognition(vi.fn()));
+    expect(result.current.debugEnabled).toBe(true);
+    expect(result.current.debugInfo).toMatchObject({ apiName: 'SpeechRecognition' });
+    act(() => result.current.start());
+    visibility = 'hidden';
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    visibility = 'visible';
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    act(() => FakeRecognition.latest.onerror?.({ error: 'network' }));
+    expect(result.current.debugTimeline.join('\n')).toContain('visibilitychange: hidden');
+    expect(result.current.debugTimeline.join('\n')).toContain('visibilitychange: visible');
+    expect(result.current.debugTimeline.join('\n')).toContain('onerror: network');
+    expect(result.current.debugTimeline.join('\n')).toContain('cleanup: onerror:network');
+    expect(result.current.diagnostic).toMatchObject({ code: 'network', source: 'onerror' });
   });
 });

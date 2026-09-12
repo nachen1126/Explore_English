@@ -78,7 +78,7 @@ function startRecording() {
 }
 
 beforeEach(() => { FakeRecognition.instances = []; });
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); window.history.replaceState({}, '', '/'); });
 
 describe('category navigation and existing discoveries', () => {
   it('requires Home → Food → Kitchen Cooking, with working category/home links and browser history', () => {
@@ -469,5 +469,23 @@ describe('shared wrong-answer hints and voice integration', () => {
     act(() => stale(result('fridge')));
     expect(storedAttempt(attempt).questions[0].answers).toHaveLength(0);
     expect(screen.getByRole('link', { name: '运动篇 · Sports & Fitness' })).toBeVisible();
+  });
+
+  it('shows the opt-in mobile speech timeline and exact error source without exposing it by default', () => {
+    vi.stubGlobal('SpeechRecognition', FakeRecognition);
+    const attempt = seedAttempt(['produce']);
+    let page = mount(`/challenge/${kitchen.id}/${attempt.id}`);
+    expect(screen.queryByText('Speech diagnostics · 语音诊断')).not.toBeInTheDocument();
+    page.unmount();
+    window.history.replaceState({}, '', '/?speechDebug=1');
+    page = mount(`/challenge/${kitchen.id}/${attempt.id}`);
+    expect(screen.getByText('Speech diagnostics · 语音诊断')).toBeVisible();
+    const recording = startRecording();
+    act(() => recording.onerror?.({ error: 'network' }));
+    expect(screen.getByText('Speech error: network')).toBeVisible();
+    expect(screen.getByText(/Source: onerror/)).toBeVisible();
+    expect(screen.getByText(/Time after start: \d+ms/)).toBeVisible();
+    expect(screen.getByText(/onerror: network/)).toBeVisible();
+    page.unmount();
   });
 });

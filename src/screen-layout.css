@@ -50,6 +50,13 @@ input[readonly] { background: var(--accent-light); }
 .speech-status { font-size: .82rem; }
 .speech-controls .inline-notice, .speech-controls .speech-transcript, .speech-controls .small { grid-column: 1 / -1; }
 .inline-notice { padding: 8px; overflow-wrap: anywhere; }
+.speech-debug { grid-column: 1 / -1; margin-top: 4px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #f5f1e7; font-size: .75rem; }
+.speech-debug summary { min-height: 30px; font-weight: 600; }
+.speech-debug p { margin: 4px 0; color: #3f4b43; overflow-wrap: anywhere; }
+.speech-debug-agent { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.speech-debug-error { padding: 7px; border-radius: 6px; background: #eee2cf; }
+.speech-debug ol { max-height: 170px; margin: 8px 0 0; padding-left: 28px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+.speech-debug li { padding: 2px 0; }
 .answer-feedback { margin: 0; font-size: 1rem; }
 .answer-feedback p { margin-top: 3px; }
 .answer-feedback:empty { display: none; }
