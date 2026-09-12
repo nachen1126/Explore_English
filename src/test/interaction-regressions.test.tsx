@@ -59,6 +59,7 @@ class FakeRecognition implements Recognition {
   continuous = false;
   onstart: Recognition['onstart'] = null;
   onaudiostart: Recognition['onaudiostart'] = null;
+  onspeechstart: Recognition['onspeechstart'] = null;
   onspeechend: Recognition['onspeechend'] = null;
   onresult: Recognition['onresult'] = null;
   onerror: Recognition['onerror'] = null;
@@ -348,7 +349,7 @@ describe('shared wrong-answer hints and voice integration', () => {
     expect(screen.getByRole('button', { name: 'Listening…' })).toBeDisabled();
     const duplicateResult = recording.onresult!;
     act(() => recording.onspeechend?.());
-    expect(screen.getByText(/Speech detected… Recognising/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Recognising…' })).toBeDisabled();
     act(() => duplicateResult(result('wrong voice')));
     expect(screen.getByText('Recognised text:')).toBeVisible();
     expect(screen.getByRole('textbox', { name: 'Type the English word' })).toHaveValue('wrong voice');

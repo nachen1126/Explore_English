@@ -79,7 +79,7 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
   const duplicateSpeech = inputSource === 'speech' && recognitionId !== undefined
     && question.answers.some(record => record.recognitionId === recognitionId);
   const validAnswer = /[\p{L}\p{N}]/u.test(answer);
-  const recording = recognition.status === 'starting' || recognition.status === 'listening';
+  const recording = recognition.status === 'starting' || recognition.status === 'listening' || recognition.status === 'speechDetected';
   const findHintAvailable = question.mode === 'find' && wrongAttempts(question) >= 3;
   useEffect(() => {
     // A mouse/trackpad desktop gets continuous typing; touch devices keep control
@@ -161,10 +161,11 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
             <button className="button primary" type="submit" disabled={!validAnswer || solved || duplicateSpeech}>Check answer</button>
           </form>
           {!solved && (recognition.supported ? <div className="speech-controls">
-            {recording ? <button className="button secondary" disabled>Listening…</button>
+            {recording ? <button className="button secondary" disabled>{recognition.status === 'starting' ? 'Starting microphone…'
+              : recognition.status === 'speechDetected' ? 'Speech detected…' : 'Listening…'}</button>
               : recognition.status === 'processing' ? <button className="button secondary" disabled>Recognising…</button>
                 : <button className="button secondary" disabled={solved} onClick={recognition.start}>{recognition.status === 'error' || duplicateSpeech ? 'Retry microphone' : 'Use microphone'}</button>}
-            <p role="status" className="speech-status">{({ idle: 'Click to start · 点击开始', starting: 'Starting microphone… · 正在启动', listening: 'Listening… Please say the word. · 正在聆听', processing: 'Speech detected… Recognising… · 正在识别', success: 'Transcript ready · 请检查识别文本', error: 'Recognition failed · 识别失败，请重试或输入' })[recognition.status]}</p>
+            <p role="status" className="speech-status">{({ idle: 'Click to start · 点击开始', starting: 'Starting microphone… · 正在启动', listening: 'Listening… Please say the word. · 正在聆听', speechDetected: 'Speech detected… Please finish the word. · 已检测到语音', processing: 'Recognising… · 正在识别', success: 'Transcript ready · 请检查识别文本', error: 'Recognition failed · 识别失败，请重试或输入' })[recognition.status]}</p>
             {recognition.transcript && <p className="speech-transcript">Recognised text: <strong>{recognition.transcript}</strong></p>}
             {duplicateSpeech && !solved && <p className="small">This recording has been checked. Record again or edit your answer to retry.</p>}
             {recognition.error && <p className="inline-notice" role="alert">{recognition.error}</p>}

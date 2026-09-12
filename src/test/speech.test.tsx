@@ -11,6 +11,7 @@ class FakeRecognition implements Recognition {
   continuous = true;
   onstart: Recognition['onstart'] = null;
   onaudiostart: Recognition['onaudiostart'] = null;
+  onspeechstart: Recognition['onspeechstart'] = null;
   onspeechend: Recognition['onspeechend'] = null;
   onresult: Recognition['onresult'] = null;
   onerror: Recognition['onerror'] = null;
@@ -41,11 +42,23 @@ describe('speech lifecycle', () => {
     expect(window.speechSynthesis.cancel).toHaveBeenCalledOnce();
     expect(vi.mocked(window.speechSynthesis.cancel).mock.invocationCallOrder[0]).toBeLessThan(active.start.mock.invocationCallOrder[0]);
     expect(active.lang).toBe('en-GB');
-    expect(active.interimResults).toBe(false);
+    expect(active.interimResults).toBe(true);
     expect(active.continuous).toBe(false);
     expect(result.current.status).toBe('starting');
     act(() => active.onstart?.());
     expect(result.current.status).toBe('listening');
+  });
+  it('preserves a synchronous native onstart deadline instead of replacing it with the startup timer', () => {
+    vi.useFakeTimers();
+    FakeRecognition.startAction = () => FakeRecognition.latest.onstart?.();
+    const { result } = renderHook(() => useRecognition(vi.fn()));
+    act(() => result.current.start());
+    expect(result.current.status).toBe('listening');
+    act(() => vi.advanceTimersByTime(5000));
+    expect(result.current.status).toBe('listening');
+    act(() => vi.advanceTimersByTime(4000));
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toContain('No speech was detected');
   });
   it('accepts native audio-start as listening and audio-end as processing', () => {
     const { result } = renderHook(() => useRecognition(vi.fn()));
@@ -54,6 +67,16 @@ describe('speech lifecycle', () => {
     expect(result.current.status).toBe('listening');
     act(() => FakeRecognition.latest.onaudioend?.());
     expect(result.current.status).toBe('processing');
+  });
+  it('uses speech-start and interim results only to show speech detection', () => {
+    const transcript = vi.fn();
+    const { result } = renderHook(() => useRecognition(transcript));
+    act(() => result.current.start());
+    act(() => FakeRecognition.latest.onspeechstart?.());
+    expect(result.current.status).toBe('speechDetected');
+    act(() => FakeRecognition.latest.onresult?.(resultEvent('bot', false)));
+    expect(result.current.status).toBe('speechDetected');
+    expect(transcript).not.toHaveBeenCalled();
   });
   it('uses the prefixed API when the standard constructor is absent', () => {
     vi.stubGlobal('SpeechRecognition', undefined);
@@ -102,7 +125,7 @@ describe('speech lifecycle', () => {
     expect(result.current.status).toBe('success');
     expect(result.current.transcript).toBe('a bottle');
     expect(transcript).toHaveBeenCalledExactlyOnceWith('a bottle', expect.any(String));
-    expect(active.abort).toHaveBeenCalledOnce();
+    expect(active.abort).not.toHaveBeenCalled();
   });
   it('considers only changed final results and ignores interim and already-handled final results', () => {
     const transcript = vi.fn();
@@ -184,6 +207,7 @@ describe('speech lifecycle', () => {
     const previous = FakeRecognition.latest;
     const lateResult = previous.onresult!;
     const lateError = previous.onerror!;
+    const lateEnd = previous.onend!;
     act(() => result.current.cancel());
     expect(previous.onresult).toBeNull();
     expect(previous.onerror).toBeNull();
@@ -191,7 +215,7 @@ describe('speech lifecycle', () => {
     expect(previous.abort).toHaveBeenCalledOnce();
     expect(result.current.status).toBe('idle');
     act(() => result.current.start());
-    act(() => { lateResult(resultEvent('stale')); lateError({ error: 'network' }); });
+    act(() => { lateResult(resultEvent('stale')); lateError({ error: 'network' }); lateEnd(); });
     expect(result.current.status).toBe('starting');
     expect(transcript).not.toHaveBeenCalled();
     act(() => FakeRecognition.latest.onresult?.(resultEvent('new')));
@@ -211,18 +235,66 @@ describe('speech lifecycle', () => {
     expect(second).toHaveBeenCalledOnce();
     expect(first.mock.calls[0][1]).not.toBe(second.mock.calls[0][1]);
   });
-  it('turns an end with no valid final result into a retryable failure', () => {
+  it('waits through the mobile end grace period before failing without a final result', () => {
+    vi.useFakeTimers();
     const transcript = vi.fn();
     const { result } = renderHook(() => useRecognition(transcript));
     act(() => result.current.start());
     act(() => FakeRecognition.latest.onresult?.(resultEvent('interim only', false)));
     act(() => FakeRecognition.latest.onend?.());
+    expect(result.current.status).toBe('speechDetected');
+    act(() => vi.advanceTimersByTime(1499));
+    expect(result.current.status).toBe('speechDetected');
+    act(() => vi.advanceTimersByTime(1));
     expect(result.current.status).toBe('error');
-    expect(result.current.error).toContain('No speech result');
+    expect(result.current.error).toContain('No final speech result');
+    expect(FakeRecognition.latest.abort).not.toHaveBeenCalled();
     expect(transcript).not.toHaveBeenCalled();
   });
+  it('accepts a delayed final result after audio-end and onend', () => {
+    vi.useFakeTimers();
+    const transcript = vi.fn();
+    const { result } = renderHook(() => useRecognition(transcript));
+    act(() => result.current.start());
+    const active = FakeRecognition.latest;
+    act(() => active.onstart?.());
+    act(() => active.onspeechstart?.());
+    act(() => active.onaudioend?.());
+    act(() => active.onend?.());
+    expect(result.current.status).toBe('processing');
+    act(() => vi.advanceTimersByTime(1200));
+    act(() => active.onresult?.(resultEvent('bottle')));
+    expect(result.current.status).toBe('success');
+    expect(transcript).toHaveBeenCalledExactlyOnceWith('bottle', expect.any(String));
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.status).toBe('success');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('does not report an early mobile onend as an immediate failure', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useRecognition(vi.fn()));
+    act(() => result.current.start());
+    act(() => FakeRecognition.latest.onend?.());
+    expect(result.current.status).toBe('starting');
+    act(() => vi.advanceTimersByTime(1499));
+    expect(result.current.status).toBe('starting');
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toContain('could not start normally');
+  });
+  it('reports no speech only after an ended listening session exhausts its grace period', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useRecognition(vi.fn()));
+    act(() => result.current.start());
+    act(() => FakeRecognition.latest.onstart?.());
+    act(() => FakeRecognition.latest.onend?.());
+    expect(result.current.status).toBe('listening');
+    act(() => vi.advanceTimersByTime(1500));
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toContain('No speech was detected');
+  });
   it.each([
-    ['starting', 30000], ['listening', 15000], ['processing', 10000],
+    ['starting', 5000], ['listening', 9000], ['processing', 5000],
   ])('times out %s and releases the native microphone session', (phase, milliseconds) => {
     vi.useFakeTimers();
     const transcript = vi.fn();
@@ -232,10 +304,21 @@ describe('speech lifecycle', () => {
     if (phase === 'processing') act(() => FakeRecognition.latest.onspeechend?.());
     act(() => vi.advanceTimersByTime(Number(milliseconds)));
     expect(result.current.status).toBe('error');
-    expect(result.current.error).toContain(phase === 'listening' ? 'No speech detected' : 'timed out');
+    expect(result.current.error).toContain(phase === 'listening' ? 'No speech was detected' : 'timed out');
     expect(FakeRecognition.latest.abort).toHaveBeenCalledOnce();
     expect(transcript).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
+  });
+  it('lets native speech-end control normal recording and applies only a long safety timeout', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useRecognition(vi.fn()));
+    act(() => result.current.start());
+    act(() => FakeRecognition.latest.onspeechstart?.());
+    act(() => vi.advanceTimersByTime(14999));
+    expect(result.current.status).toBe('speechDetected');
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toContain('did not finish normally');
   });
   it('cleans recording callbacks and timers when the question unmounts', () => {
     vi.useFakeTimers();
@@ -247,6 +330,7 @@ describe('speech lifecycle', () => {
     unmount();
     expect(active.abort).toHaveBeenCalledOnce();
     expect(active.onresult).toBeNull();
+    expect(active.onspeechstart).toBeNull();
     expect(active.onaudioend).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     act(() => lateResult(resultEvent('late')));
@@ -280,5 +364,25 @@ describe('speech lifecycle', () => {
     expect(onError).toHaveBeenCalledOnce();
     utterance.onerror?.({ error: 'synthesis-failed' } as SpeechSynthesisErrorEvent);
     expect(onError).toHaveBeenCalledTimes(2);
+  });
+  it('writes a development-only event timeline with relative times and cleanup reasons', () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const { result } = renderHook(() => useRecognition(vi.fn()));
+    act(() => result.current.start());
+    const active = FakeRecognition.latest;
+    act(() => active.onstart?.());
+    act(() => active.onaudiostart?.());
+    act(() => active.onspeechstart?.());
+    act(() => active.onspeechend?.());
+    act(() => active.onresult?.(resultEvent('kettle')));
+    const timeline = debug.mock.calls.map(call => String(call[0])).join('\n');
+    expect(timeline).toMatch(/\[speech] .+ \d+ms click/);
+    expect(timeline).toContain('recognition.start');
+    expect(timeline).toContain('onstart');
+    expect(timeline).toContain('onaudiostart');
+    expect(timeline).toContain('onspeechstart');
+    expect(timeline).toContain('onspeechend');
+    expect(timeline).toContain('final-result');
+    expect(timeline).toContain('cleanup:final-result');
   });
 });
