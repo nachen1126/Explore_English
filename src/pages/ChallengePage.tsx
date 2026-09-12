@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getScene, vocabulary } from '../data';
-import { createAttempt, currentQuestion, hasHint, isSolved, matches, weakVocabulary } from '../logic';
+import { createAttempt, currentQuestion, hasHint, isSolved, matches, weakVocabulary, wrongAttempts } from '../logic';
 import { useLearning } from '../store';
 import { speak, useRecognition } from '../speech';
 import type { ChallengeAttempt, ChallengeQuestion, Scene } from '../types';
@@ -9,7 +9,6 @@ import { Layout, MissingPage, UnavailableScenePage } from '../components/Layout'
 import { SceneArt } from '../components/SceneArt';
 import { AudioButton } from '../components/WordCard';
 import { useChallengeEnter } from '../useChallengeEnter';
-import { Modal } from '../components/Modal';
 
 export function ChallengePage() {
   const { sceneId = '', attemptId } = useParams();
@@ -61,17 +60,27 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
   const composing = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const [audioError, setAudioError] = useState(false);
-  const [choicesOpen, setChoicesOpen] = useState(false);
+  const [findHintActive, setFindHintActive] = useState(false);
+  const findHintTimer = useRef<number | null>(null);
+  const lastFindClick = useRef<{ id: string; at: number } | null>(null);
+  const submittedRecognitionIds = useRef(new Set<string>());
+  const [pendingSpeech, setPendingSpeech] = useState<{ text: string; id: string } | null>(null);
   const item = vocabulary[question.vocabularyId];
   const solved = isSolved(question);
   const lastAnswer = question.answers.at(-1);
-  const recognition = useRecognition((text, id) => { setAnswer(text); setInputSource('speech'); setRecognitionId(id); });
+  const recognition = useRecognition((text, id) => {
+    setAnswer(text);
+    setInputSource('speech');
+    setRecognitionId(id);
+    setPendingSpeech({ text, id });
+  });
   const assisted = hasHint(question);
   const revealed = question.revealedAt !== undefined;
   const duplicateSpeech = inputSource === 'speech' && recognitionId !== undefined
     && question.answers.some(record => record.recognitionId === recognitionId);
   const validAnswer = /[\p{L}\p{N}]/u.test(answer);
   const recording = recognition.status === 'starting' || recognition.status === 'listening';
+  const findHintAvailable = question.mode === 'find' && wrongAttempts(question) >= 3;
   useEffect(() => {
     // A mouse/trackpad desktop gets continuous typing; touch devices keep control
     // of the software keyboard. Never steal focus from an open dialog.
@@ -83,14 +92,26 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
     setAnswer('');
     setInputSource('typing');
     setRecognitionId(undefined);
+    setPendingSpeech(null);
     if (window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) input.current?.focus({ preventScroll: true });
   }, [question.revealedAt, revealed, solved]);
+  useEffect(() => {
+    if (!pendingSpeech || solved || question.mode !== 'produce' || submittedRecognitionIds.current.has(pendingSpeech.id)) return;
+    submittedRecognitionIds.current.add(pendingSpeech.id);
+    dispatch({ type: 'answer', attemptId: attempt.id, questionId: question.id,
+      record: { answer: pendingSpeech.text, correct: matches(pendingSpeech.text, item), source: 'speech',
+        recognitionId: pendingSpeech.id, at: Date.now() } });
+    setPendingSpeech(null);
+  }, [attempt.id, dispatch, item, pendingSpeech, question.id, question.mode, solved]);
   useEffect(() => {
     if (question.mode !== 'find' || !solved) return;
     const timer = window.setTimeout(onNext, 600);
     return () => window.clearTimeout(timer);
   }, [question.mode, solved, onNext]);
   useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
+  useEffect(() => () => {
+    if (findHintTimer.current !== null) window.clearTimeout(findHintTimer.current);
+  }, []);
   const mode = question.mode === 'find' ? 'Find It' : recognition.supported ? 'Say It / Type It' : 'Type It';
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -100,28 +121,39 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
         ...(inputSource === 'speech' && recognitionId ? { recognitionId } : {}) } });
     recognition.cancel();
   }
+  function answerFind(id: string) {
+    const at = Date.now();
+    const previous = lastFindClick.current;
+    if (previous?.id === id && at - previous.at < 500) return;
+    lastFindClick.current = { id, at };
+    dispatch({ type: 'answer', attemptId: attempt.id, questionId: question.id,
+      record: { answer: id, correct: id === item.id, source: 'hotspot', at } });
+  }
+  function showFindHint() {
+    if (findHintTimer.current !== null) window.clearTimeout(findHintTimer.current);
+    setFindHintActive(true);
+    findHintTimer.current = window.setTimeout(() => {
+      setFindHintActive(false);
+      findHintTimer.current = null;
+    }, 1600);
+  }
   return <section className="challenge-page">
     <div className="challenge-heading"><div><p className="eyebrow">{attempt.kind === 'weak' ? 'Weak word practice' : 'Scene challenge'} · {mode}</p>
       <h1>{question.mode === 'find' ? `Find the ${item.word}.` : 'What is this?'}</h1>
       <p>{question.mode === 'find' ? 'Select the object in the picture.' : 'Name the highlighted object in English.'}</p></div>
       <span className="question-counter">{index + 1} / {attempt.questions.length}</span></div>
     <progress className="progress-bar" value={index} max={attempt.questions.length} aria-label="Challenge progress" />
-    <div className="challenge-layout"><SceneArt key={scene.id} scene={scene} challenge highlight={question.mode === 'produce' ? item.id : undefined}
-      onTap={question.mode === 'find' && !solved ? id => dispatch({ type: 'answer', attemptId: attempt.id, questionId: question.id,
-        record: { answer: id, correct: id === item.id, source: 'hotspot', at: Date.now() } }) : undefined} />
+    <div className="challenge-layout"><SceneArt key={scene.id} scene={scene} challenge
+      highlight={question.mode === 'produce' || findHintActive ? item.id : undefined} hintPulse={findHintActive}
+      onTap={question.mode === 'find' && !solved ? answerFind : undefined} />
       <div className="answer-panel">
         {question.mode === 'find' ? <><h2>Listen & find</h2><AudioButton item={item} />
-          <button className="button secondary object-list-button" onClick={() => setChoicesOpen(true)}>Text alternatives for the picture</button>
-          {choicesOpen && <Modal title="Text alternatives for the picture" onClose={() => setChoicesOpen(false)}>
-            <div className="answer-options">{scene.vocabularyIds.map((id, position) => <button key={id}
-              className="button secondary" disabled={solved} onClick={() => { dispatch({
-                type: 'answer', attemptId: attempt.id, questionId: question.id,
-                record: { answer: id, correct: id === item.id, source: 'hotspot', at: Date.now() },
-              }); setChoicesOpen(false); }}>{position + 1}. <span lang="zh-CN">{vocabulary[id].chineseMeaning}</span></button>)}</div>
-          </Modal>}</> : <>
+          {findHintAvailable && !solved && <button className="button secondary find-hint-button" disabled={findHintActive} onClick={showFindHint}>
+            {findHintActive ? 'Hint showing…' : 'Show me a hint'}
+          </button>}</> : <>
           <form onSubmit={submit}><label htmlFor="word-answer">Type the English word</label>
             <input ref={input} id="word-answer" name="answer" autoComplete="off" autoCapitalize="none" spellCheck={false} value={answer}
-              readOnly={solved} onChange={event => { if (!solved) { setAnswer(event.target.value); setInputSource('typing'); setRecognitionId(undefined); } }}
+              readOnly={solved} onChange={event => { if (!solved) { setAnswer(event.target.value); setInputSource('typing'); setRecognitionId(undefined); setPendingSpeech(null); } }}
               onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}
               onKeyDown={event => {
                 if (event.key === 'Enter' && (composing.current || event.nativeEvent.isComposing || event.keyCode === 229 || event.repeat)) event.preventDefault();

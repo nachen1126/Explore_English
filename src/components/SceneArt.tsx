@@ -12,8 +12,9 @@ interface Props {
   highlight?: string;
   challenge?: boolean;
   enlarged?: boolean;
+  hintPulse?: boolean;
 }
-export function SceneArt({ scene, discovered = [], onTap, highlight, challenge = false, enlarged = false }: Props) {
+export function SceneArt({ scene, discovered = [], onTap, highlight, challenge = false, enlarged = false, hintPulse = false }: Props) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [reload, setReload] = useState(0);
   const [debug, setDebug] = useState(false);
@@ -38,12 +39,12 @@ export function SceneArt({ scene, discovered = [], onTap, highlight, challenge =
           const found = discovered.includes(hotspot.vocabularyId);
           const name = vocabulary[hotspot.vocabularyId].word;
           return <button key={`${hotspot.vocabularyId}-${index}`} data-word-id={hotspot.vocabularyId} data-region={index}
-            className={`hotspot ${found ? 'is-found' : ''} ${highlight === hotspot.vocabularyId ? 'is-highlighted' : ''}`}
+            className={`hotspot ${found ? 'is-found' : ''} ${highlight === hotspot.vocabularyId ? 'is-highlighted' : ''} ${hintPulse && highlight === hotspot.vocabularyId ? 'is-hinting' : ''}`}
             style={{ ...hotspotStyle(hotspot), zIndex: scene.hotspots.filter(other => other.width * other.height > hotspot.width * hotspot.height).length + 1 }} disabled={status !== 'ready' || !onTap}
             aria-label={challenge ? `Select object ${index + 1}` : `${found ? 'Review' : 'Explore'} ${name}`}
             onClick={() => onTap?.(hotspot.vocabularyId)}>
             {found && <span className="found-marker" aria-hidden="true">✓</span>}
-            {highlight === hotspot.vocabularyId && <span className="target-label" aria-hidden="true">This object</span>}
+            {highlight === hotspot.vocabularyId && !hintPulse && <span className="target-label" aria-hidden="true">This object</span>}
             {import.meta.env.DEV && debug && <><span className="debug-label">{name}</span><span className="debug-center" /></>}
           </button>;
         })}
@@ -60,7 +61,7 @@ export function SceneArt({ scene, discovered = [], onTap, highlight, challenge =
     {!enlarged && <button className="text-button enlarge-picture" onClick={() => setZoomOpen(true)}>Enlarge picture</button>}
     {zoomOpen && <Modal title={`${scene.title} · Larger picture`} onClose={() => setZoomOpen(false)}>
       <p className="small">Scroll across the larger picture to see and select smaller objects.</p>
-      <SceneArt scene={scene} discovered={discovered} highlight={highlight} challenge={challenge} enlarged
+      <SceneArt scene={scene} discovered={discovered} highlight={highlight} challenge={challenge} hintPulse={hintPulse} enlarged
         onTap={onTap ? id => { onTap(id); setZoomOpen(false); } : undefined} />
     </Modal>}
     {import.meta.env.DEV && !enlarged && <details className="dev-tools">

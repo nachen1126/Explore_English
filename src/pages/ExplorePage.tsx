@@ -8,7 +8,6 @@ import { Layout, RestartDialog, UnavailableScenePage } from '../components/Layou
 import { SceneArt } from '../components/SceneArt';
 import { WordCard } from '../components/WordCard';
 import { useLearningEnter } from '../useLearningEnter';
-import { Modal } from '../components/Modal';
 
 export function ExplorePage() {
   const { sceneId = '' } = useParams();
@@ -24,7 +23,6 @@ function ExploreScene({ sceneId }: { sceneId: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [hint, setHint] = useState<string | undefined>();
   const [restart, setRestart] = useState(false);
-  const [objectsOpen, setObjectsOpen] = useState(false);
   const [audioError, setAudioError] = useState(false);
   useEffect(() => { dispatch({ type: 'visit', sceneId: scene.id, at: Date.now() }); }, [dispatch, scene.id]);
   useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
@@ -63,7 +61,6 @@ function ExploreScene({ sceneId }: { sceneId: string }) {
           setHint(remaining); if (!remaining) setSelected(scene.vocabularyIds[0]);
         }}>{complete ? 'Review an object' : 'Show me a hint'}</button>
           <button className="text-button muted" onClick={() => setRestart(true)}>Start over</button></div>
-        <button className="button secondary object-list-button" onClick={() => setObjectsOpen(true)}>All objects · keyboard & small-screen access</button>
         {complete && <section className="completion-panel"><h2>You found them all!</h2>
       <div className="button-row"><button className="button primary" onClick={start}>Start Challenge →</button>
         {latestAttempt && !latestAttempt.completedAt && <Link className="button secondary" to={`/challenge/${scene.id}/${latestAttempt.id}`}>Resume Challenge</Link>}
@@ -72,8 +69,5 @@ function ExploreScene({ sceneId }: { sceneId: string }) {
     {restart && <RestartDialog onCancel={() => setRestart(false)} onConfirm={() => {
       dispatch({ type: 'restart', sceneId: scene.id }); setSelected(null); setHint(undefined); setRestart(false);
     }} />}
-    {objectsOpen && <Modal title="All objects" onClose={() => setObjectsOpen(false)}><div className="word-chips">{scene.vocabularyIds.map((id, index) => <button key={id} onClick={() => { discover(id); setObjectsOpen(false); }}>
-      <span>{String(index + 1).padStart(2, '0')}</span> {vocabulary[id].word}{explored.includes(id) && <span aria-label="discovered"> ✓</span>}
-    </button>)}</div></Modal>}
   </Layout>;
 }

@@ -10,7 +10,7 @@ export function useLearningEnter(onNext: () => void, enabled: boolean) {
         || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
-        || (target?.closest('button, a, summary, [role="button"]') && !target.closest('[data-learn-next], .hotspot, .word-chips button'))
+        || (target?.closest('button, a, summary, [role="button"]') && !target.closest('[data-learn-next], .hotspot'))
         || document.querySelector('[aria-modal="true"], dialog[open]')) return;
       // Prevent the focused Next button's native click, including auto-repeat.
       event.preventDefault();

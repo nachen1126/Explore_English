@@ -126,6 +126,28 @@ describe('safe continuation', () => {
   });
 });
 describe('storage validation', () => {
+  it('migrates retired scene progress and attempts once without warning or losing healthy records', () => {
+    const healthy = createAttempt(scene);
+    const retired = { ...createAttempt(scene), id: 'retired-attempt', sceneId: 'gym-1' };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      schemaVersion: 2,
+      scenes: {
+        [scene.id]: { explored: [scene.vocabularyIds[0]], lastVisited: 12 },
+        'kitchen-1': { explored: ['kitchen-door'], lastVisited: 99 },
+        'gym-1': { explored: ['gym-chair'], lastVisited: 100 },
+      },
+      attempts: { [healthy.id]: healthy, [retired.id]: retired },
+    }));
+    const loaded = loadState(scenes);
+    expect(loaded.notice).toBeNull();
+    expect(loaded.state.scenes).toEqual({ [scene.id]: { explored: [scene.vocabularyIds[0]], lastVisited: 12 } });
+    expect(loaded.state.attempts).toEqual({ [healthy.id]: healthy });
+    const migrated = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    expect(migrated.scenes['kitchen-1']).toBeUndefined();
+    expect(migrated.scenes['gym-1']).toBeUndefined();
+    expect(migrated.attempts['retired-attempt']).toBeUndefined();
+    expect(loadState(scenes).notice).toBeNull();
+  });
   it('preserves a pre-category v2 attempt and discoveries without needing a category migration', () => {
     const attempt = createAttempt(scene);
     const state = { ...emptyState(), scenes: { [scene.id]: { explored: [scene.vocabularyIds[0]], lastVisited: 1 } }, attempts: { [attempt.id]: attempt } };

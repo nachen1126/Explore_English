@@ -4,6 +4,9 @@ import { topics as defaultTopics } from './data';
 export const SCHEMA_VERSION = 2 as const;
 export const STORAGE_KEY = 'explore-english-v2';
 export const LEGACY_KEY = 'explore-english-v1';
+/** Records from these deliberately retired development scenes are migrated away,
+ * rather than reported as damaged user data. */
+export const RETIRED_SCENE_IDS = new Set(['kitchen-1', 'airport-1', 'gym-1', 'supermarket-1']);
 const LEGACY_VOCABULARY_IDS: Record<string, string> = {
   'airport-bag': 'airport-travel-bag',
   'airport-bottle': 'airport-water-bottle',
@@ -155,7 +158,9 @@ export function loadState(catalog: Scene[], storage?: StoragePort): LoadResult {
     }
     if (!object(parsed.scenes) || (raw && !object(parsed.attempts))) throw new Error('Invalid storage');
     let recovered = false;
+    let retiredRecordsRemoved = false;
     for (const [id, value] of Object.entries(parsed.scenes)) {
+      if (RETIRED_SCENE_IDS.has(id)) { retiredRecordsRemoved = true; continue; }
       const scene = catalog.find(item => item.id === id && item.published);
       if (!scene) continue;
       if (!object(value) || !strings(value.explored)) { recovered = true; continue; }
@@ -165,16 +170,26 @@ export function loadState(catalog: Scene[], storage?: StoragePort): LoadResult {
     }
     if (raw && object(parsed.attempts)) {
       for (const [id, value] of Object.entries(parsed.attempts)) {
+        if (object(value) && typeof value.sceneId === 'string' && RETIRED_SCENE_IDS.has(value.sceneId)) {
+          retiredRecordsRemoved = true;
+          continue;
+        }
         const attempt = validateAttempt(id, value, catalog);
         if (attempt) fallback.attempts[id] = attempt;
         else recovered = true;
       }
     }
+    // Persist a successful, known migration immediately so a refresh never
+    // reports the same retired records again. Healthy current records survive.
+    if (retiredRecordsRemoved) {
+      try { target.setItem(STORAGE_KEY, JSON.stringify(fallback)); }
+      catch { /* The provider retries and reports a genuine storage write failure. */ }
+    }
     return { state: fallback, writable: true, notice: legacy
       ? 'Your previous discoveries have been kept. Start a new challenge for an accurate score.'
-      : recovered ? 'Some saved records could not be read. Your other progress has been kept.' : null };
+      : recovered ? 'Some saved records could not be recovered. Your other progress has been kept. · 部分存档无法恢复，其他学习进度已保留。' : null };
   } catch {
-    return { state: fallback, writable: true, notice: 'Saved progress could not be read. You can keep learning in this session.' };
+    return { state: fallback, writable: true, notice: 'Saved progress could not be read. You can keep learning in this session. · 存档无法读取，本次仍可继续学习。' };
   }
 }
 function validateAttempt(id: string, value: unknown, catalog: Scene[]): ChallengeAttempt | null {

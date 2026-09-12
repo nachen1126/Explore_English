@@ -192,7 +192,10 @@ describe('results and navigation', () => {
   it('storage failures are communicated while the page remains usable', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
     mount('/');
-    expect(screen.getByText(/Your browser cannot save progress/)).toHaveAttribute('role', 'status');
+    const notice = screen.getByRole('status');
+    expect(notice).toHaveTextContent(/Your browser cannot save progress/);
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss saved progress notice' }));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Choose your world/ })).toBeVisible();
   });
 });

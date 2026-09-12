@@ -8,12 +8,14 @@ export function LearningProvider({ children }: { children: ReactNode }) {
   const [loaded] = useState(() => loadState(scenes));
   const [state, dispatch] = useReducer(learningReducer, loaded.state);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
   useEffect(() => {
     if (loaded.writable) setSaveFailed(!saveState(state));
   }, [state, loaded.writable]);
   return <Context.Provider value={{ state, dispatch }}>
-    {(loaded.notice || saveFailed) && <div className="storage-notice" role="status">
-      {saveFailed ? 'Your browser cannot save progress right now. Keep this tab open to continue learning.' : loaded.notice}
+    {!noticeDismissed && (loaded.notice || saveFailed) && <div className="storage-notice" role="status">
+      <span>{saveFailed ? 'Your browser cannot save progress right now. Keep this tab open to continue learning. · 浏览器暂时无法保存进度，请保持此页面开启。' : loaded.notice}</span>
+      <button type="button" aria-label="Dismiss saved progress notice" onClick={() => setNoticeDismissed(true)}>Close</button>
     </div>}
     {children}
   </Context.Provider>;

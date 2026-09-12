@@ -91,6 +91,7 @@ describe('category navigation and existing discoveries', () => {
     expect(screen.getByLabelText('Current route')).toHaveTextContent('/scene/kitchen-2');
     expect(screen.getByRole('link', { name: '← 返回本分类 · Category' })).toHaveAttribute('href', '/category/food-dining');
     expect(screen.getByRole('link', { name: 'Explore English home' })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('button', { name: 'All objects · keyboard & small-screen access' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Browser back' }));
     expect(screen.getByLabelText('Current route')).toHaveTextContent('/category/food-dining');
     fireEvent.click(screen.getByRole('button', { name: 'Browser forward' }));
@@ -105,6 +106,7 @@ describe('category navigation and existing discoveries', () => {
     oldState.scenes['gym-1'] = { explored: ['gym-chair'], lastVisited: 42 };
     saveState(oldState);
     let page = mount('/category/sports-fitness');
+    expect(screen.queryByText(/saved records could not/i)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Coming soon · 敬请期待' })).toBeVisible();
     expect(screen.queryByRole('link', { name: /Gym ·/ })).not.toBeInTheDocument();
     page.unmount();
@@ -244,6 +246,7 @@ describe('Find It automatic advancement', () => {
     vi.useFakeTimers();
     const attempt = seedAttempt(['find', 'find', 'produce']);
     mount(`/challenge/${kitchen.id}/${attempt.id}`); loadPicture();
+    expect(screen.queryByRole('button', { name: 'Text alternatives for the picture' })).not.toBeInTheDocument();
     fireEvent.click(targetButton(attempt.questions[1]));
     act(() => vi.advanceTimersByTime(1000));
     expect(screen.getByText('1 / 3')).toBeVisible();
@@ -265,6 +268,36 @@ describe('Find It automatic advancement', () => {
     act(() => vi.advanceTimersByTime(1000));
     expect(screen.getByText('2 / 3')).toBeVisible();
     expect(storedAttempt(attempt).questions[1].answers).toHaveLength(0);
+  });
+
+  it('offers a temporary visual hint only after three wrong hotspot choices and never solves the question', () => {
+    vi.useFakeTimers();
+    const attempt = seedAttempt(['find', 'produce']);
+    mount(`/challenge/${kitchen.id}/${attempt.id}`); loadPicture();
+    const wrongIndex = kitchen.hotspots.findIndex(hotspot => hotspot.vocabularyId !== attempt.questions[0].vocabularyId);
+    const wrong = screen.getByRole('button', { name: `Select object ${wrongIndex + 1}` });
+    fireEvent.click(wrong);
+    fireEvent.click(wrong);
+    expect(storedAttempt(attempt).questions[0].answers).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Show me a hint' })).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(500));
+    fireEvent.click(wrong);
+    expect(storedAttempt(attempt).questions[0].answers).toHaveLength(2);
+    act(() => vi.advanceTimersByTime(500));
+    fireEvent.click(wrong);
+    expect(storedAttempt(attempt).questions[0].answers).toHaveLength(3);
+    const hintButton = screen.getByRole('button', { name: 'Show me a hint' });
+    fireEvent.click(hintButton);
+    expect(screen.getByRole('button', { name: 'Hint showing…' })).toBeDisabled();
+    const correct = targetButton(attempt.questions[0]);
+    expect(correct).toHaveClass('is-hinting');
+    expect(screen.queryByText('Correct.')).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1600));
+    expect(correct).not.toHaveClass('is-hinting');
+    expect(screen.getByRole('button', { name: 'Show me a hint' })).toBeEnabled();
+    fireEvent.click(correct);
+    expect(screen.getByText('Correct.')).toBeVisible();
+    expect(summarize(storedAttempt(attempt))).toMatchObject({ score: 0, weak: [attempt.questions[0].vocabularyId] });
   });
 
   it('automatically opens results after a one-word Find practice without duplicate scoring', () => {
@@ -319,8 +352,7 @@ describe('shared wrong-answer hints and voice integration', () => {
     act(() => duplicateResult(result('wrong voice')));
     expect(screen.getByText('Recognised text:')).toBeVisible();
     expect(screen.getByRole('textbox', { name: 'Type the English word' })).toHaveValue('wrong voice');
-    expect(storedAttempt(attempt).questions[0].answers).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+    expect(storedAttempt(attempt).questions[0].answers).toHaveLength(2);
     act(() => duplicateResult(result('wrong voice')));
     expect(screen.getByRole('button', { name: 'Check answer' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
@@ -358,6 +390,30 @@ describe('shared wrong-answer hints and voice integration', () => {
     expect(storedAttempt(attempt).questions[1].answers).toHaveLength(1);
     expect(screen.queryByRole('status', { name: 'Word hint' })).not.toBeInTheDocument();
     page.unmount();
+  });
+
+  it('automatically records three independent wrong voice results once each and shows the shared hint', () => {
+    vi.stubGlobal('SpeechRecognition', FakeRecognition);
+    const attempt = seedAttempt(['produce']);
+    mount(`/challenge/${kitchen.id}/${attempt.id}`); loadPicture();
+    for (const transcript of ['table', 'window', 'bottle']) {
+      const recording = startRecording();
+      const deliver = recording.onresult!;
+      act(() => deliver(result(transcript)));
+      act(() => deliver(result(transcript)));
+    }
+    const stored = storedAttempt(attempt).questions[0];
+    expect(stored.answers).toHaveLength(3);
+    expect(stored.answers.map(answer => answer.source)).toEqual(['speech', 'speech', 'speech']);
+    expect(new Set(stored.answers.map(answer => answer.recognitionId)).size).toBe(3);
+    expect(screen.getByRole('status', { name: 'Word hint' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '查看答案 · Show answer' }));
+    expect(screen.getByRole('textbox', { name: 'Type the English word' })).toHaveValue('');
+    const retry = startRecording();
+    act(() => retry.onresult?.(result(vocabulary[attempt.questions[0].vocabularyId].word)));
+    expect(screen.getByText('Correct.')).toBeVisible();
+    expect(screen.getByText('This word stays in Needs practice.')).toBeVisible();
+    expect(summarize(storedAttempt(attempt))).toMatchObject({ score: 0, weak: [attempt.questions[0].vocabularyId] });
   });
 
   it('a correct retry keeps the hint and first-answer score, with no Produce auto-advance', () => {
