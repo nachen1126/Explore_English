@@ -250,6 +250,9 @@ input[readonly] { background: var(--accent-light); }
 .enlarged-art { width: max(100%, 1000px); }
 .enlarged-art .scene-canvas { display: block; height: auto; container-type: normal; }
 .enlarged-art .scene-frame { width: 100%; }
+.is-hotspot-debug { height: auto !important; }
+.is-hotspot-debug .scene-canvas { display: block !important; height: auto !important; container-type: normal !important; }
+.is-hotspot-debug .scene-frame { width: 100% !important; }
 .question-counter, .progress-counter strong { font-size: 1.6rem; font-weight: 600; }
 .continue-learning { display: flex; align-items: center; gap: 18px; padding: 12px 18px; margin-bottom: 16px; border-radius: 12px; background: var(--accent-light); }
 .continue-learning img { width: 90px; height: 60px; object-fit: contain; border-radius: 6px; }

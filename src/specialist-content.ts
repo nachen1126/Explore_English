@@ -32,6 +32,7 @@ export const specialistVocabulary: VocabularyItem[] = [
 
 export const specialistScenes: Scene[] = [
   { id:'kitchen-2', topicId:'kitchen', title:'Kitchen · Cooking', image:'scenes/kitchen-cooking.webp', thumbnail:'scenes/kitchen-cooking-thumb.webp', imageWidth:1536, imageHeight:1024, published:true, assetStatus:'final', nextSceneId:null,
+    imageVersion:'kitchen-cooking-v1', hotspotImageVersion:'kitchen-cooking-v1',
     vocabularyIds: ['kitchen-fridge','kitchen-sink','kitchen-oven','kitchen-hob','kitchen-kettle','kitchen-pan','kitchen-chopping-board','kitchen-cupboard','kitchen-spatula','kitchen-microwave'],
     hotspots: [
       p('kitchen-fridge',[[75,58],[220,56],[258,85],[258,398],[221,439],[221,660],[77,675]]),
@@ -51,6 +52,7 @@ export const specialistScenes: Scene[] = [
       r('kitchen-microwave',248,307,126,104),
     ] },
   { id:'airport-2', topicId:'airport', title:'Airport · Departures', image:'scenes/airport-departures.webp', thumbnail:'scenes/airport-departures-thumb.webp', imageWidth:1536, imageHeight:1024, published:true, assetStatus:'final', nextSceneId:null,
+    imageVersion:'airport-departures-v1', hotspotImageVersion:'airport-departures-v1',
     vocabularyIds: ['airport-suitcase','airport-passport','airport-boarding-pass','airport-check-in-desk','airport-departure-board','airport-security-checkpoint','airport-gate','airport-luggage-trolley','airport-baggage-carousel','airport-aeroplane'],
     hotspots: [
       p('airport-suitcase',[[23,518],[43,501],[113,480],[169,495],[191,521],[194,803],[180,837],[158,848],[143,872],[68,881],[26,845],[17,800]]),

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
+import { SceneArt } from '../components/SceneArt';
 import { getCategoryScenes, getScene, scenes, vocabulary } from '../data';
 import { createAttempt, emptyState, learningReducer, loadState, recommendNext, saveState } from '../logic';
 
@@ -50,6 +51,16 @@ describe('first scene expansion batch', () => {
     for (const vocabularyId of scene.vocabularyIds) {
       expect(screen.getAllByRole('button', { name: `Explore ${vocabulary[vocabularyId].word}` }).length).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it.each(expandedIds)('%s uses the identical calibrated regions in Explore, Find It and hint states', id => {
+    const scene = getScene(id)!;
+    const view = render(<SceneArt scene={scene} onTap={() => undefined} />);
+    const exploreStyles = [...view.container.querySelectorAll<HTMLElement>('.hotspot')].map(item => item.getAttribute('style'));
+    view.rerender(<SceneArt scene={scene} challenge highlight={scene.vocabularyIds[0]} hintPulse onTap={() => undefined} />);
+    const challengeStyles = [...view.container.querySelectorAll<HTMLElement>('.hotspot')].map(item => item.getAttribute('style'));
+    expect(challengeStyles).toEqual(exploreStyles);
+    expect(challengeStyles).toHaveLength(scene.hotspots.length);
   });
 
   it.each(expandedIds)('%s persists exploration and creates a complete ten-word challenge', id => {

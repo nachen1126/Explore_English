@@ -39,6 +39,8 @@ export function assembleScenes(available: Scene[], plannedTopics: Topic[]): Scen
   thumbnail: `scenes/${topic.id}-01-thumb.webp`,
   imageWidth: 1536,
   imageHeight: 1024,
+  imageVersion: `${topic.id}-artwork-pending`,
+  hotspotImageVersion: null,
   published: false,
   assetStatus: 'awaiting-artwork',
   vocabularyIds: [],

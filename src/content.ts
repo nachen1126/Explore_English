@@ -675,7 +675,13 @@ const legacyScenes: Scene[] = [
     ],
     "nextSceneId": null
   }
-].map(scene => ({ ...scene, assetStatus: scene.assetStatus as Scene['assetStatus'], hotspots: calibratedHotspots[scene.id] }));
+].map(scene => ({
+  ...scene,
+  imageVersion: `${scene.id}-development-v1`,
+  hotspotImageVersion: null,
+  assetStatus: scene.assetStatus as Scene['assetStatus'],
+  hotspots: calibratedHotspots[scene.id],
+}));
 
 export const readyVocabulary = [...legacyVocabulary, ...specialistVocabulary, ...expandedVocabulary];
 export const readyScenes = [...legacyScenes, ...specialistScenes, ...expandedScenes];

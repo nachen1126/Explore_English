@@ -41,6 +41,10 @@ export interface Scene {
   thumbnail: string;
   imageWidth: number;
   imageHeight: number;
+  /** Identifies the exact artwork revision used by this scene. */
+  imageVersion: string;
+  /** Must match imageVersion before a scene can be published. */
+  hotspotImageVersion: string | null;
   published: boolean;
   assetStatus: 'development' | 'final' | 'awaiting-artwork';
   vocabularyIds: string[];

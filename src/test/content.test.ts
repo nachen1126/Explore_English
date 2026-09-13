@@ -2,7 +2,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { assembleScenes, categories, getCategoryScenes, getSceneCategory, scenes, topics, publishedScenes, vocabulary } from '../data';
-import { hotspotStyle, normalizePoint } from '../scene-geometry';
+import { hotspotDebugEnabled, hotspotOutOfBounds, hotspotStyle, imageDisplayMetrics, normalizePoint } from '../scene-geometry';
 
 describe('publication contract', () => {
   it('retains all independently authored scenes within a topic', () => {
@@ -44,6 +44,8 @@ describe('publication contract', () => {
       hashes.add(createHash('sha256').update(readFileSync('public/' + scene.image)).digest('hex'));
       expect(scene.assetStatus).toBe('final');
       expect([scene.imageWidth, scene.imageHeight]).toEqual([1536, 1024]);
+      expect(scene.imageVersion).toBe(scene.hotspotImageVersion);
+      expect(scene.imageVersion).toMatch(/-v\d+$/);
     });
     expect(hashes.size).toBe(publishedScenes.length);
     expect(new Set(scenes.map(scene => scene.id)).size).toBe(scenes.length);
@@ -82,7 +84,9 @@ describe('intrinsic image coordinates', () => {
       expect(hotspot.y).toBeGreaterThanOrEqual(0);
       expect(hotspot.x + hotspot.width).toBeLessThanOrEqual(1.00001);
       expect(hotspot.y + hotspot.height).toBeLessThanOrEqual(1.00001);
-      for (const width of [320, 390, 768, 1280]) {
+      // 1093/1152/1536 are the effective CSS widths for the requested desktop
+      // viewports at 125% browser zoom; normalized geometry must be identical.
+      for (const width of [320, 390, 768, 1093, 1152, 1280, 1536]) {
         const height = width * scene.imageHeight / scene.imageWidth;
         const style = hotspotStyle(hotspot);
         const pixelX = parseFloat(style.left) / 100 * width;
@@ -94,5 +98,18 @@ describe('intrinsic image coordinates', () => {
     expect(css).toContain('object-fit:contain');
     expect(css).not.toMatch(/object-fit\s*:\s*cover/);
     expect(css).not.toMatch(/aspect-ratio\s*:\s*4\s*\/\s*3/);
+  });
+  it('binds the overlay to the visible contained image area and exposes debug mode through either router-safe query position', () => {
+    expect(imageDisplayMetrics(1536, 1024, 1000, 800, 1440)).toMatchObject({
+      renderedWidth: 1000,
+      renderedHeight: expect.closeTo(666.6667),
+      offsetLeft: 0,
+      offsetTop: expect.closeTo(66.6667),
+      viewportWidth: 1440,
+    });
+    expect(hotspotDebugEnabled({ search: '?hotspotDebug=1', hash: '#/scene/living-room-1' })).toBe(true);
+    expect(hotspotDebugEnabled({ search: '', hash: '#/scene/living-room-1?hotspotDebug=1' })).toBe(true);
+    expect(hotspotDebugEnabled({ search: '', hash: '#/scene/living-room-1' })).toBe(false);
+    publishedScenes.forEach(scene => scene.hotspots.forEach(hotspot => expect(hotspotOutOfBounds(hotspot)).toBe(false)));
   });
 });
