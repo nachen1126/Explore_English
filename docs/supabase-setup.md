@@ -10,16 +10,16 @@ The repository contains a real Supabase Auth, Postgres RLS and Edge Function int
 4. Enable email/password authentication. Keep email confirmation enabled for production. Configure the sender/template in Authentication → Email before inviting real learners.
 5. Apply `supabase/migrations/202609140001_accounts.sql` with `supabase db push`, or paste that complete migration into the SQL Editor once.
 6. Deploy the protected function with `supabase functions deploy admin-users`. JWT verification must stay enabled. Supabase supplies `SUPABASE_URL` and the legacy server-only service role environment variable to its hosted function; if your project uses the newer secret-key system, add it with `supabase secrets set SUPABASE_SECRET_KEY=...`. Never prefix that secret with `VITE_`, commit it, or put it in GitHub Pages variables.
-7. Register your own account through the website and confirm its email. Copy that user's UUID from Authentication → Users, then run this once in SQL Editor:
+7. In Project Settings → API Keys, copy the Project URL and the **publishable** key (safe for a browser). Do not use a secret/service-role key.
+8. For local testing, put those two public values in an ignored `.env.local` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. In GitHub → Explore_English → Settings → Secrets and variables → Actions → Variables, create variables with those same names, then re-run the Pages workflow. They are intentionally Actions variables because both values are public browser configuration.
+9. Register your own account through the configured website and confirm its email. Copy that user's UUID from Authentication → Users, then run this once in SQL Editor:
 
    ```sql
    insert into public.admin_users (user_id) values ('YOUR-USER-UUID');
    ```
 
    Administrator status is checked against this server-side allow-list. Editing browser storage cannot add a row.
-8. In Project Settings → API Keys, copy the Project URL and the **publishable** key (safe for a browser). Do not use a secret/service-role key.
-9. In GitHub → Explore_English → Settings → Secrets and variables → Actions → Variables, create `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. They are intentionally Actions variables because both values are public browser configuration.
-10. Re-run the Pages workflow or push a commit. Test registration, confirmation, password recovery, two-device progress, ordinary-user `/admin` denial, and the administrator dashboard against the deployed project.
+10. Sign out and back in so the server-side administrator check refreshes. Test registration, confirmation, password recovery, two-device progress, ordinary-user `/admin` denial, and the administrator dashboard against the deployed project.
 
 ## Security model
 
