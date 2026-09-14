@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { SceneArt } from '../components/SceneArt';
-import { getCategoryScenes, getScene, scenes, vocabulary } from '../data';
+import { getCategoryScenes, getScene, publishedScenes, scenes, vocabulary } from '../data';
 import { createAttempt, emptyState, learningReducer, loadState, recommendNext, saveState } from '../logic';
 
 const expectedByCategory = {
@@ -25,13 +25,8 @@ describe('first scene expansion batch', () => {
   it.each(Object.entries(expectedByCategory))('%s shows every new scene card with its own thumbnail', (category, ids) => {
     mount(`/category/${category}`);
     const main = screen.getByRole('main');
-    const cards = new Map<string, HTMLElement>();
-    while (true) {
-      within(main).getAllByRole('link').forEach(card => cards.set(card.getAttribute('href') ?? '', card));
-      const next = within(main).queryByRole('button', { name: 'Next page' });
-      if (!next || next.hasAttribute('disabled')) break;
-      fireEvent.click(next);
-    }
+    const cards = new Map(within(main).getAllByRole('link').map(card => [card.getAttribute('href') ?? '', card]));
+    expect(within(main).queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
     for (const id of ids) {
       const scene = getScene(id)!;
       const card = cards.get(`/scene/${id}`)!;
@@ -62,6 +57,18 @@ describe('first scene expansion batch', () => {
     const challengeStyles = [...view.container.querySelectorAll<HTMLElement>('.hotspot')].map(item => item.getAttribute('style'));
     expect(challengeStyles).toEqual(exploreStyles);
     expect(challengeStyles).toHaveLength(scene.hotspots.length);
+  });
+
+  it.each(publishedScenes)('$id binds one completed marker to the matching vocabulary hotspot', scene => {
+    const view = render(<SceneArt scene={scene} discovered={scene.vocabularyIds} onTap={() => undefined} />);
+    const markers = [...view.container.querySelectorAll<HTMLElement>('.found-marker')];
+    expect(markers).toHaveLength(scene.vocabularyIds.length);
+    for (const marker of markers) {
+      const region = marker.closest<HTMLElement>('.hotspot-region');
+      expect(region).not.toBeNull();
+      expect(region).toHaveAttribute('data-hotspot-vocabulary', marker.dataset.vocabularyId);
+      expect(region?.querySelector('.hotspot')).toHaveAttribute('data-word-id', marker.dataset.vocabularyId);
+    }
   });
 
   it.each(expandedIds)('%s persists exploration and creates a complete ten-word challenge', id => {

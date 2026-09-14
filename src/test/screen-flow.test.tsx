@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -155,20 +155,40 @@ describe('paged content and result dialogs', () => {
     expect(within(screen.getByRole('region', { name: /Ready to explore/ })).getAllByRole('link')).toHaveLength(7);
     expect(within(screen.getByRole('region', { name: /Coming soon/ })).getAllByRole('link')).toHaveLength(1);
   });
-  it('separates planned scenes and keeps all travel plans reachable', () => {
+  it('separates learned, not-started and planned scenes without category pagination', () => {
     mount('/category/travel-transport');
+    expect(screen.getByRole('tab', { name: '已经学习 · Learned (0)' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: '未学习 · Not started (3)' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '内容规划 · Coming soon (6)' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Airport · Departures · Start Exploring' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(screen.getByRole('link', { name: 'Hotel Room · Start Exploring' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Train Station · Start Exploring' })).toBeVisible();
     fireEvent.click(screen.getByRole('tab', { name: /内容规划/ }));
     expect(screen.queryByRole('link', { name: 'Airport · Departures · Start Exploring' })).not.toBeInTheDocument();
     expect(screen.getByText(/Metro Station/)).toBeVisible();
     expect(screen.getByText(/Beach/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: /开始学习/ }));
-    expect(screen.getByRole('link', { name: 'Airport · Departures · Start Exploring' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
-    expect(screen.getByRole('link', { name: 'Train Station · Start Exploring' })).toBeVisible();
+    fireEvent.click(screen.getByRole('tab', { name: /已经学习/ }));
+    expect(screen.getByText(/这个分类还没有学习记录/)).toBeVisible();
+  });
+  it('uses any real discovery for Learned, keeps completion there, and restores it after remount', () => {
+    const airport = publishedScenes.find(scene => scene.id === 'airport-2')!;
+    const hotel = publishedScenes.find(scene => scene.id === 'hotel-room-1')!;
+    saveState({ ...emptyState(), scenes: {
+      [airport.id]: { explored: airport.vocabularyIds.slice(0, 4), lastVisited: 10 },
+      [hotel.id]: { explored: hotel.vocabularyIds, lastVisited: 20 },
+    } });
+    const first = mount('/category/travel-transport');
+    expect(screen.getByRole('tab', { name: '已经学习 · Learned (2)' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('link', { name: `${airport.title} · Continue` })).toHaveTextContent(`4/${airport.vocabularyIds.length} discovered`);
+    expect(screen.getByRole('link', { name: `${hotel.title} · Review` })).toHaveTextContent(`${hotel.vocabularyIds.length}/${hotel.vocabularyIds.length} discovered`);
+    expect(screen.queryByRole('link', { name: 'Train Station · Start Exploring' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: '未学习 · Not started (1)' }));
+    expect(screen.getByRole('link', { name: 'Train Station · Start Exploring' })).toHaveTextContent('0/10 discovered');
+    first.unmount();
+    mount('/category/travel-transport?view=learned');
+    expect(screen.getByRole('link', { name: `${airport.title} · Continue` })).toBeVisible();
+    expect(screen.getByRole('link', { name: `${hotel.title} · Review` })).toBeVisible();
   });
   it('puts the complete attempt history in a keyboard-accessible dialog, restoring focus on close', async () => {
     const user = userEvent.setup();
@@ -185,15 +205,11 @@ describe('paged content and result dialogs', () => {
     expect(open).toHaveFocus();
     expect(screen.getByRole('heading', { name: 'Let’s practise together.' })).toBeVisible();
   });
-  it('keeps mobile category pages smaller and responds to the viewport media query', () => {
-    let small = true;
-    let change: (() => void) | undefined;
-    vi.stubGlobal('matchMedia', () => ({ matches: small, addEventListener: (_: string, fn: () => void) => { change = fn; }, removeEventListener: vi.fn() }));
+  it('shows every planned scene at once on mobile without a page-size branch', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     mount('/category/travel-transport?view=plans');
-    expect(within(screen.getByRole('main')).getAllByRole('listitem')).toHaveLength(4);
-    small = false;
-    act(() => change?.());
     expect(within(screen.getByRole('main')).getAllByRole('listitem')).toHaveLength(6);
+    expect(screen.queryByRole('navigation', { name: /scene pages/i })).not.toBeInTheDocument();
   });
   it('removes only the Home navigation arrow and keeps scene and next arrows', async () => {
     const user = userEvent.setup();

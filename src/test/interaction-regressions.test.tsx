@@ -134,7 +134,7 @@ describe('category navigation and existing discoveries', () => {
 
   it('shows an empty category as forthcoming plans without fake scene links or images', () => {
     mount('/category/health-wellbeing');
-    expect(screen.getByRole('heading', { name: 'Coming soon · 敬请期待' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '内容规划 · Coming soon' })).toBeVisible();
     expect(screen.getByText(/Pharmacy/)).toBeVisible();
     expect(within(screen.getByRole('main')).queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();

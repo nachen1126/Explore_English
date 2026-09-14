@@ -45,6 +45,13 @@ export function SceneArt({ scene, discovered = [], onTap, highlight, challenge =
       setPoint(normalizePoint(event.clientX, event.clientY, imageBounds));
     }
   }
+  const markerRegions = new Map<string, number>();
+  scene.hotspots.forEach((hotspot, index) => {
+    const current = markerRegions.get(hotspot.vocabularyId);
+    if (current === undefined || hotspot.width * hotspot.height > scene.hotspots[current].width * scene.hotspots[current].height) {
+      markerRegions.set(hotspot.vocabularyId, index);
+    }
+  });
   return <div className={`scene-art-section ${enlarged ? 'enlarged-art' : ''} ${debug ? 'is-hotspot-debug' : ''}`}>
     <div className="scene-canvas" style={{ '--scene-ratio': scene.imageWidth / scene.imageHeight } as CSSProperties}>
     <div ref={frameRef} className="scene-frame" data-testid="scene-frame" style={{ aspectRatio: `${scene.imageWidth} / ${scene.imageHeight}` }} onClick={inspect}>
@@ -58,20 +65,22 @@ export function SceneArt({ scene, discovered = [], onTap, highlight, challenge =
         {scene.hotspots.map((hotspot, index) => {
           const found = discovered.includes(hotspot.vocabularyId);
           const name = vocabulary[hotspot.vocabularyId].word;
-          return <button key={`${hotspot.vocabularyId}-${index}`} data-word-id={hotspot.vocabularyId} data-region={index}
-            className={`hotspot ${found ? 'is-found' : ''} ${highlight === hotspot.vocabularyId ? 'is-highlighted' : ''} ${hintPulse && highlight === hotspot.vocabularyId ? 'is-hinting' : ''}`}
-            style={{ ...hotspotStyle(hotspot), zIndex: scene.hotspots.filter(other => other.width * other.height > hotspot.width * hotspot.height).length + 1 }} disabled={status !== 'ready' || !onTap}
-            aria-label={challenge ? `Select object ${index + 1}` : `${found ? 'Review' : 'Explore'} ${name}`}
-            onClick={() => onTap?.(hotspot.vocabularyId)}>
-            {highlight === hotspot.vocabularyId && !hintPulse && <span className="target-label" aria-hidden="true">This object</span>}
-            {debug && <><span className="debug-label">{name}<small>{hotspot.x.toFixed(3)}, {hotspot.y.toFixed(3)}, {hotspot.width.toFixed(3)}, {hotspot.height.toFixed(3)}</small></span><span className="debug-center" /></>}
-          </button>;
+          const style = hotspotStyle(hotspot) as CSSProperties;
+          const zIndex = scene.hotspots.filter(other => other.width * other.height > hotspot.width * hotspot.height).length + 1;
+          return <span key={`${hotspot.vocabularyId}-${index}`} className="hotspot-region" data-hotspot-vocabulary={hotspot.vocabularyId}
+            data-region={index} style={{ left: style.left, top: style.top, width: style.width, height: style.height, zIndex }}>
+            <button data-word-id={hotspot.vocabularyId} data-region={index}
+              className={`hotspot ${found ? 'is-found' : ''} ${highlight === hotspot.vocabularyId ? 'is-highlighted' : ''} ${hintPulse && highlight === hotspot.vocabularyId ? 'is-hinting' : ''}`}
+              style={{ borderRadius: style.borderRadius, clipPath: style.clipPath }} disabled={status !== 'ready' || !onTap}
+              aria-label={challenge ? `Select object ${index + 1}` : `${found ? 'Review' : 'Explore'} ${name}`}
+              onClick={() => onTap?.(hotspot.vocabularyId)}>
+              {highlight === hotspot.vocabularyId && !hintPulse && <span className="target-label" aria-hidden="true">This object</span>}
+              {debug && <><span className="debug-label">{name}<small>{hotspot.x.toFixed(3)}, {hotspot.y.toFixed(3)}, {hotspot.width.toFixed(3)}, {hotspot.height.toFixed(3)}</small></span><span className="debug-center" /></>}
+            </button>
+            {found && markerRegions.get(hotspot.vocabularyId) === index && <span className="found-marker" data-vocabulary-id={hotspot.vocabularyId}
+              aria-hidden="true">✓</span>}
+          </span>;
         })}
-        {scene.hotspots.map((hotspot, index) => discovered.includes(hotspot.vocabularyId) &&
-          <span key={`marker-${hotspot.vocabularyId}-${index}`} className="found-marker" aria-hidden="true" style={{
-            '--marker-x': `${(hotspot.x + hotspot.width) * 100}%`,
-            '--marker-y': `${hotspot.y * 100}%`,
-          } as CSSProperties}>✓</span>)}
       </div>
       <svg className="hotspot-outlines" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
         {scene.hotspots.filter(h => debug || h.vocabularyId === highlight).map((h, index) => {
