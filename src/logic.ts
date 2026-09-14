@@ -76,6 +76,7 @@ export function createAttempt(scene: Scene, weak: string[] = [], kind: 'full' | 
   };
 }
 export type Action =
+  | { type: 'replace'; state: LearningState }
   | { type: 'visit'; sceneId: string; at: number }
   | { type: 'discover'; sceneId: string; vocabularyId: string; at: number }
   | { type: 'restart'; sceneId: string }
@@ -84,6 +85,8 @@ export type Action =
   | { type: 'answer'; attemptId: string; questionId: string; record: AnswerRecord };
 export function learningReducer(state: LearningState, action: Action): LearningState {
   switch (action.type) {
+    case 'replace':
+      return action.state;
     case 'visit': {
       const progress = state.scenes[action.sceneId];
       return { ...state, scenes: { ...state.scenes, [action.sceneId]: { explored: progress?.explored ?? [], lastVisited: action.at } } };

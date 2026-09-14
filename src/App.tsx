@@ -7,9 +7,12 @@ import { ExplorePage } from './pages/ExplorePage';
 import { ChallengePage } from './pages/ChallengePage';
 import { ResultPage } from './pages/ResultPage';
 import { ReviewPage } from './pages/ReviewPage';
+import { AccountPage } from './pages/AccountPage';
+import { AdminPage } from './pages/AdminPage';
+import { AuthProvider } from './auth';
 
 export function App() {
-  return <ErrorBoundary><LearningProvider><Routes>
+  return <ErrorBoundary><AuthProvider><LearningProvider><Routes>
     <Route path="/" element={<HomePage />} />
     <Route path="/category/:categoryId" element={<CategoryPage />} />
     <Route path="/scene/:sceneId" element={<ExplorePage />} />
@@ -18,6 +21,8 @@ export function App() {
     <Route path="/result/:sceneId" element={<ResultPage />} />
     <Route path="/result/:sceneId/:attemptId" element={<ResultPage />} />
     <Route path="/review/:sceneId" element={<ReviewPage />} />
+    <Route path="/account" element={<AccountPage />} />
+    <Route path="/admin" element={<AdminPage />} />
     <Route path="*" element={<MissingPage />} />
-  </Routes></LearningProvider></ErrorBoundary>;
+  </Routes></LearningProvider></AuthProvider></ErrorBoundary>;
 }

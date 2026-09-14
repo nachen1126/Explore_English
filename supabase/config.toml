@@ -1,0 +1,4 @@
+project_id = "explore-english"
+
+[functions.admin-users]
+verify_jwt = true
