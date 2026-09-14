@@ -2,7 +2,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { assembleScenes, categories, getCategoryScenes, getSceneCategory, scenes, topics, publishedScenes, vocabulary } from '../data';
-import { hotspotDebugEnabled, hotspotOutOfBounds, hotspotStyle, imageDisplayMetrics, normalizePoint } from '../scene-geometry';
+import { hotspotDebugEnabled, hotspotOutOfBounds, hotspotStyle, imageDisplayMetrics, normalizePoint, overlappingHotspotPairs } from '../scene-geometry';
 
 describe('publication contract', () => {
   it('retains all independently authored scenes within a topic', () => {
@@ -22,12 +22,13 @@ describe('publication contract', () => {
     expect(new Set(topics.map(topic => topic.id)).size).toBe(topics.length);
     expect(getCategoryScenes('sports-fitness').map(scene => scene.id)).toEqual(['swimming-pool-1']);
     expect(getCategoryScenes('food-dining').map(scene => scene.id)).toEqual(['kitchen-2', 'supermarket-2', 'cafe-1']);
-    expect(getCategoryScenes('travel-transport').map(scene => scene.id)).toEqual(['airport-2', 'hotel-room-1']);
+    expect(getCategoryScenes('travel-transport').map(scene => scene.id)).toEqual(['airport-2', 'hotel-room-1', 'train-station-1']);
+    expect(getCategoryScenes('study-work').map(scene => scene.id)).toEqual(['classroom-1']);
     expect(getCategoryScenes('beauty-personal-care').map(scene => scene.id)).toEqual(['skin-care-1']);
     expect(getCategoryScenes('animals').map(scene => scene.id)).toEqual(['underwater-1']);
     expect(getCategoryScenes('home-living').map(scene => scene.id)).toEqual(['living-room-1', 'bathroom-1', 'laundry-room-1']);
     expect(getCategoryScenes('unknown')).toEqual([]);
-    expect(publishedScenes).toHaveLength(11);
+    expect(publishedScenes).toHaveLength(13);
     publishedScenes.forEach(scene => expect(getSceneCategory(scene)).toBeDefined());
   });
   it('publishes only complete independent scene records and real optimised assets', () => {
@@ -62,6 +63,15 @@ describe('publication contract', () => {
       expect(scene!.thumbnail).toContain(`${id === 'supermarket-2' ? 'supermarket-1' : id === 'skin-care-1' ? 'skincare-1' : id === 'hotel-room-1' ? 'hotel-room-1' : id === 'underwater-1' ? 'underwater-world-1' : id}-thumb.webp`);
       expect(scene!.vocabularyIds).toHaveLength(10);
       expect(new Set(scene!.hotspots.map(hotspot => hotspot.vocabularyId))).toEqual(new Set(scene!.vocabularyIds));
+    }
+  });
+  it('publishes the calibrated classroom and train station only with ten separate non-overlapping regions', () => {
+    for (const id of ['classroom-1', 'train-station-1']) {
+      const scene = publishedScenes.find(item => item.id === id)!;
+      expect(scene.vocabularyIds).toHaveLength(10);
+      expect(scene.hotspots).toHaveLength(10);
+      expect(overlappingHotspotPairs(scene.hotspots)).toEqual([]);
+      scene.hotspots.forEach(hotspot => expect(hotspotOutOfBounds(hotspot)).toBe(false));
     }
   });
   it('14. every displayed IPA has a valid slash form and a dictionary source', () => {

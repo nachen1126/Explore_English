@@ -155,7 +155,7 @@ describe('recommendation hierarchy and separately saved results', () => {
     saveState({...emptyState(),scenes:{'gym-1':{explored:['gym-chair'],lastVisited:30},'kitchen-2':{explored:['kitchen-fridge'],lastVisited:10}}});
     mount('/');
     expect(screen.getByRole('link',{name:'Continue Kitchen · Cooking →'})).toHaveAttribute('href','/scene/kitchen-2');
-    expect(within(screen.getByRole('region',{name:/Ready to explore/})).getAllByRole('img')).toHaveLength(6);
+    expect(within(screen.getByRole('region',{name:/Ready to explore/})).getAllByRole('img')).toHaveLength(7);
     expect(screen.queryByRole('button',{name:'Next page'})).not.toBeInTheDocument();
     expect(screen.queryByText(/Development artwork/)).not.toBeInTheDocument();
   });

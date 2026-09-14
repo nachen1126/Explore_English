@@ -21,6 +21,8 @@ SCENES = [
     ("skin-care-1", "src/expanded-content.ts"),
     ("hotel-room-1", "src/expanded-content.ts"),
     ("underwater-1", "src/expanded-content.ts"),
+    ("classroom-1", "src/first-batch-content.ts"),
+    ("train-station-1", "src/first-batch-content.ts"),
 ]
 
 
@@ -123,9 +125,9 @@ def main() -> None:
 
 The shared image/overlay geometry was already sound. The inaccurate expansion scenes used coarse, mostly rectangular 1000-grid estimates as final coordinates; some boxes included adjacent objects or were shifted from the actual object. None of the expansion scenes reused another scene's coordinate array or generated positions from vocabulary order.
 
-Kitchen and Airport remain the untouched reference coordinate sets. The other nine published scenes were measured independently against their 1536×1024 source artwork and changed to tight polygons, ellipses, or rectangles. These review images are generated from the same normalized hotspot records used by Explore and Find It. Red outlines are the visual/click regions; the dot is each region's centre.
+Kitchen and Airport remain the untouched reference coordinate sets. Every other scene was measured independently against its own 1536×1024 source artwork using tight polygons, ellipses, or rectangles. These review images are generated from the same normalized hotspot records used by Explore and Find It. Red outlines are the visual/click regions; the dot is each region's centre.
 
-Responsive geometry was checked at 1366×768, 1440×900, 1920×1080, 320×700, 375×812, 390×844, 430×932, and 844×390. All 88 scene/viewport checks confirmed that the image, hotspot layer, and intrinsic-ratio frame have matching bounds and every region stays inside the image. A 125% effective CSS viewport was also covered by the percentage-coordinate tests.
+Automated normalized-geometry tests cover all 13 published scenes at seven responsive widths (320, 390, 768, 1093, 1152, 1280, and 1536 px): 91 scene/viewport checks confirm that every region stays inside the image and scales from the same coordinate system. Classroom and Train Station were additionally clicked object-by-object in the browser at 1280×720 and 390×844; their image, hotspot layer, and intrinsic-ratio frame had identical rendered bounds, with no marker outside the image.
 
 The deployed calibration mode is opt-in only: `?hotspotDebug=1#/scene/<scene-id>`. It displays boundaries, labels, centres, coordinates, intrinsic/rendered image sizes, container offset, viewport width, version match, overlaps, and out-of-bounds status.
 

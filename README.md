@@ -31,7 +31,7 @@ CI and the existing Pages workflow run this chain. A successful push to main pub
 
 ## Available content
 
-Two scenes are published: Kitchen · Cooking and Airport · Departures. Each uses its own final 1536 × 1024 artwork, thumbnail and ten image-specific words. The original Kitchen (`kitchen-1`), Airport (`airport-1`), Gym (`gym-1`) and development Supermarket (`supermarket-1`) records remain catalogued but unpublished so old URLs and browser storage fail safely. All 36 remaining scene plans stay Coming Soon until matching final artwork and calibrated hotspots are supplied.
+Thirteen scenes are published across seven categories. Every scene has its own 1536 × 1024 artwork, thumbnail, image-specific vocabulary, and independently calibrated normalized hotspots. The first new batch adds Study & Work · Classroom and Travel & Transport · Train Station, with exactly ten target words each. Unfinished plans remain Coming Soon until their matching artwork and hotspot audit are complete.
 
 - [Full image briefs and missing asset list](docs/scene-asset-spec.md)
 - [Architecture, data model and storage migration](docs/architecture.md)
@@ -40,6 +40,8 @@ Two scenes are published: Kitchen · Cooking and Airport · Departures. Each use
 - [Category, keyboard, hints and speech acceptance — 2026-09-06](docs/interaction-validation.md)
 - [Single-screen layout, Produce Enter and score feedback — 2026-09-08](docs/screen-validation.md)
 - [Responsive layout, hotspot and practice verification — 2026-09-12](docs/experience-validation.md)
+- [Supabase account and administrator setup](docs/supabase-setup.md)
+- [Published hotspot audit](docs/hotspot-audit/README.md)
 
 ## Content workflow
 
@@ -50,11 +52,13 @@ python -m pip install -r requirements-assets.txt
 python scripts/prepare-scene.py supplied.png public/scenes/kitchen-01.webp
 ```
 
-A development-only hotspot editor displays names, bounds, centres and normalized clicks, previews draft geometry, and exports JSON. It is excluded from production. Follow the asset brief before setting published to true.
+An opt-in hotspot editor (`?hotspotDebug=1`) displays names, bounds, centres and normalized clicks, previews draft geometry, and exports JSON. Normal production routes keep the overlay closed. Follow the asset brief and test both desktop and mobile before setting `published: true`.
 
 ## Progress and audio
 
-React state persists discoveries and complete challenge attempts under `explore-english-v2`, schemaVersion 2. Known legacy discoveries migrate safely; unreliable legacy scores do not. Restart asks for confirmation. Progress remains local to this browser.
+Guests keep discoveries and complete challenge attempts locally under `explore-english-v2`, schemaVersion 2. Known legacy discoveries migrate safely; unreliable legacy scores do not. Restart asks for confirmation. When Supabase is configured, signed-in users load and save progress through a row-level-secured account record; the first sign-in offers a newest-safe merge with existing device progress. Account data is cleared from React state on sign-out and is never copied into the guest storage key.
+
+Authentication and administrator statistics require the external Supabase setup described above. The static site uses only the public project URL and publishable key. Passwords are handled by Supabase Auth, user progress is protected by row-level security, and the administrator list is served by a JWT-protected Edge Function that checks a database allowlist.
 
 Speech synthesis requests British English. Speech recognition is optional and browser-dependent; typed answers are always supported. Recordings are not stored.
 

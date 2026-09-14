@@ -11,8 +11,9 @@ const expectedByCategory = {
   'food-dining': ['supermarket-2', 'cafe-1'],
   'sports-fitness': ['swimming-pool-1'],
   'beauty-personal-care': ['skin-care-1'],
-  'travel-transport': ['hotel-room-1'],
+  'travel-transport': ['hotel-room-1', 'train-station-1'],
   animals: ['underwater-1'],
+  'study-work': ['classroom-1'],
 } as const;
 const expandedIds = Object.values(expectedByCategory).flat();
 
@@ -91,7 +92,8 @@ describe('first scene expansion batch', () => {
   it('keeps the published category counts in sync with the expanded catalogue', () => {
     expect(getCategoryScenes('home-living')).toHaveLength(3);
     expect(getCategoryScenes('food-dining')).toHaveLength(3);
-    expect(getCategoryScenes('travel-transport')).toHaveLength(2);
+    expect(getCategoryScenes('travel-transport')).toHaveLength(3);
+    expect(getCategoryScenes('study-work')).toHaveLength(1);
     expect(getCategoryScenes('sports-fitness')).toHaveLength(1);
     expect(getCategoryScenes('beauty-personal-care')).toHaveLength(1);
     expect(getCategoryScenes('animals')).toHaveLength(1);

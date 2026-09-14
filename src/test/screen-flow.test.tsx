@@ -152,19 +152,23 @@ describe('paged content and result dialogs', () => {
     const links = within(screen.getByRole('main')).getAllByRole('link');
     expect(new Set(links.map(link => link.getAttribute('aria-label')))).toEqual(new Set(categories.map(category => `${category.chineseTitle} · ${category.title}`)));
     expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: /Ready to explore/ })).getAllByRole('link')).toHaveLength(6);
-    expect(within(screen.getByRole('region', { name: /Coming soon/ })).getAllByRole('link')).toHaveLength(2);
+    expect(within(screen.getByRole('region', { name: /Ready to explore/ })).getAllByRole('link')).toHaveLength(7);
+    expect(within(screen.getByRole('region', { name: /Coming soon/ })).getAllByRole('link')).toHaveLength(1);
   });
   it('separates planned scenes and keeps all travel plans reachable', () => {
     mount('/category/travel-transport');
     expect(screen.getByRole('link', { name: 'Airport · Departures · Start Exploring' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(screen.getByRole('link', { name: 'Train Station · Start Exploring' })).toBeVisible();
     fireEvent.click(screen.getByRole('tab', { name: /内容规划/ }));
     expect(screen.queryByRole('link', { name: 'Airport · Departures · Start Exploring' })).not.toBeInTheDocument();
-    expect(screen.getByText(/Train Station/)).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(screen.getByText(/Metro Station/)).toBeVisible();
     expect(screen.getByText(/Beach/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /开始学习/ }));
     expect(screen.getByRole('link', { name: 'Airport · Departures · Start Exploring' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(screen.getByRole('link', { name: 'Train Station · Start Exploring' })).toBeVisible();
   });
   it('puts the complete attempt history in a keyboard-accessible dialog, restoring focus on close', async () => {
     const user = userEvent.setup();

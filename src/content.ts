@@ -2,6 +2,7 @@ import type { Scene, VocabularyItem } from './types';
 import { calibratedHotspots } from './hotspots';
 import { expandedScenes, expandedVocabulary } from './expanded-content';
 import { specialistScenes, specialistVocabulary } from './specialist-content';
+import { firstBatchScenes, firstBatchVocabulary } from './first-batch-content';
 
 // Legacy scene and vocabulary IDs stay immutable so stored progress and attempts remain valid.
 // Standalone British door/chair/jar omit Cambridge's linking-r superscript.
@@ -683,5 +684,5 @@ const legacyScenes: Scene[] = [
   hotspots: calibratedHotspots[scene.id],
 }));
 
-export const readyVocabulary = [...legacyVocabulary, ...specialistVocabulary, ...expandedVocabulary];
-export const readyScenes = [...legacyScenes, ...specialistScenes, ...expandedScenes];
+export const readyVocabulary = [...legacyVocabulary, ...specialistVocabulary, ...expandedVocabulary, ...firstBatchVocabulary];
+export const readyScenes = [...legacyScenes, ...specialistScenes, ...expandedScenes, ...firstBatchScenes];
