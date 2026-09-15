@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "packageManager": "pnpm@11.19.0",
   "scripts": {
+    "predev:weapp": "tsc -p ../packages/shared/tsconfig.json",
     "dev:weapp": "taro build --type weapp --watch",
     "prebuild:weapp": "tsc -p ../packages/shared/tsconfig.json",
     "build:weapp": "taro build --type weapp",

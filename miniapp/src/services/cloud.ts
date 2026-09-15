@@ -15,24 +15,59 @@ const environmentId = process.env.TARO_APP_CLOUDBASE_ENV?.trim() ?? '';
 
 export function isCloudConfigured() { return environmentId.length > 0; }
 
-export function initializeCloud() {
-  if (isCloudConfigured()) Taro.cloud.init({ env: environmentId, traceUser: true });
+function cloudError(operation: string, error: unknown): Error {
+  console.error(`[Explore English][CloudBase] ${operation} failed. Guest mode remains available.`, error);
+  return error instanceof Error ? error : new Error(`${operation} failed.`);
+}
+
+function withTimeout<T>(promise: Promise<T>, operation: string, milliseconds = 12000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${operation} timed out after ${milliseconds}ms.`)), milliseconds);
+    promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+  });
+}
+
+export function initializeCloud(): boolean {
+  if (!isCloudConfigured()) {
+    console.warn('[Explore English][CloudBase] TARO_APP_CLOUDBASE_ENV is empty. Starting without cloud sync.');
+    return false;
+  }
+  try {
+    if (!Taro.cloud?.init) throw new Error('The current WeChat runtime does not expose wx.cloud.');
+    Taro.cloud.init({ env: environmentId, traceUser: true });
+    console.info(`[Explore English][CloudBase] initialized: ${environmentId}`);
+    return true;
+  } catch (error) {
+    cloudError('initialization', error);
+    return false;
+  }
 }
 
 async function call<T>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
   if (!isCloudConfigured()) throw new Error('CloudBase is not configured. You can continue as a guest.');
-  const result = await Taro.cloud.callFunction({ name: 'user-service', data: { action, ...payload } });
-  const body = result.result as ServiceResult<T>;
-  if (!body?.ok || body.data === undefined) throw new Error(body?.message || body?.error || 'CloudBase request failed.');
-  return body.data;
+  try {
+    const result = await withTimeout(
+      Taro.cloud.callFunction({ name: 'user-service', data: { action, ...payload } }),
+      `user-service:${action}`,
+    );
+    const body = result.result as ServiceResult<T>;
+    if (!body?.ok || body.data === undefined) throw new Error(body?.message || body?.error || 'CloudBase request failed.');
+    return body.data;
+  } catch (error) {
+    throw cloudError(`user-service:${action}`, error);
+  }
 }
 
 export async function wechatLogin(): Promise<MiniappUser> {
-  const session = await Taro.login({ timeout: 10000 });
-  if (!session.code) throw new Error('WeChat login did not return a valid code.');
-  // Taro.cloud attaches the verified WeChat identity. The code is deliberately
-  // not persisted and OpenID is read only inside the cloud function.
-  return call<MiniappUser>('login', { loginCodeReceived: true });
+  try {
+    const session = await Taro.login({ timeout: 10000 });
+    if (!session.code) throw new Error('WeChat login did not return a valid code.');
+    // Taro.cloud attaches the verified WeChat identity. The code is deliberately
+    // not persisted and OpenID is read only inside the cloud function.
+    return await call<MiniappUser>('login', { loginCodeReceived: true });
+  } catch (error) {
+    throw cloudError('WeChat login', error);
+  }
 }
 
 export const pullCloudSnapshot = () => call<LearningSnapshot>('pull');
@@ -42,35 +77,48 @@ export const updateCloudProfile = (nickname: string | null, avatar: string | nul
 
 export async function uploadProfileAvatar(filePath: string, userId: string) {
   if (!isCloudConfigured()) throw new Error('CloudBase is not configured.');
-  const extension = filePath.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-  const uploaded = await Taro.cloud.uploadFile({ cloudPath: `avatars/${userId}/${Date.now()}.${extension}`, filePath });
-  return uploaded.fileID;
+  try {
+    const extension = filePath.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const uploaded = await Taro.cloud.uploadFile({ cloudPath: `avatars/${userId}/${Date.now()}.${extension}`, filePath });
+    return uploaded.fileID;
+  } catch (error) {
+    throw cloudError('avatar upload', error);
+  }
 }
 
 export async function recognizeRecording(filePath: string, recognitionId: string) {
   if (!isCloudConfigured()) throw new Error('Speech recognition requires a configured CloudBase environment.');
-  const uploaded = await Taro.cloud.uploadFile({ cloudPath: `speech/${recognitionId}.mp3`, filePath });
+  let uploaded: Taro.cloud.UploadFileResult | undefined;
   try {
+    uploaded = await Taro.cloud.uploadFile({ cloudPath: `speech/${recognitionId}.mp3`, filePath });
     const response = await Taro.cloud.callFunction({
       name: 'speech-recognize', data: { fileID: uploaded.fileID, recognitionId, format: 'mp3' },
     });
     const body = response.result as ServiceResult<{ text: string; recognitionId: string; noSpeech?: boolean }>;
     if (!body?.ok || body.data === undefined) throw new Error(body?.message || body?.error || 'Speech recognition failed.');
     return body.data;
+  } catch (error) {
+    throw cloudError('speech recognition', error);
   } finally {
-    void Taro.cloud.deleteFile({ fileList: [uploaded.fileID] }).catch(() => undefined);
+    if (uploaded?.fileID) void Taro.cloud.deleteFile({ fileList: [uploaded.fileID] }).catch(error => {
+      console.error('[Explore English][CloudBase] temporary recording cleanup failed.', error);
+    });
   }
 }
 
 export async function playPronunciation(vocabularyId: string) {
   if (!isCloudConfigured()) throw new Error('Pronunciation audio requires a configured CloudBase environment.');
-  const response = await Taro.cloud.callFunction({ name: 'speech-synthesize', data: { vocabularyId } });
-  const body = response.result as ServiceResult<{ fileID: string }>;
-  if (!body?.ok || !body.data?.fileID) throw new Error(body?.message || body?.error || 'Pronunciation audio is unavailable.');
-  const temporary = await Taro.cloud.getTempFileURL({ fileList: [body.data.fileID] });
-  const url = temporary.fileList[0]?.tempFileURL;
-  if (!url) throw new Error('Pronunciation audio could not be loaded.');
-  const audio = Taro.createInnerAudioContext();
-  audio.autoplay = true; audio.src = url;
-  audio.onEnded(() => audio.destroy()); audio.onError(() => audio.destroy());
+  try {
+    const response = await Taro.cloud.callFunction({ name: 'speech-synthesize', data: { vocabularyId } });
+    const body = response.result as ServiceResult<{ fileID: string }>;
+    if (!body?.ok || !body.data?.fileID) throw new Error(body?.message || body?.error || 'Pronunciation audio is unavailable.');
+    const temporary = await Taro.cloud.getTempFileURL({ fileList: [body.data.fileID] });
+    const url = temporary.fileList[0]?.tempFileURL;
+    if (!url) throw new Error('Pronunciation audio could not be loaded.');
+    const audio = Taro.createInnerAudioContext();
+    audio.autoplay = true; audio.src = url;
+    audio.onEnded(() => audio.destroy()); audio.onError(() => audio.destroy());
+  } catch (error) {
+    throw cloudError('pronunciation', error);
+  }
 }

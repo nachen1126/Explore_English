@@ -46,8 +46,13 @@ export function LearningProvider({ children }: PropsWithChildren) {
 
   const acceptCloudSnapshot = useCallback((next: LearningSnapshot, version: number) => {
     if (sessionVersion.current !== version) return false;
-    snapshotRef.current = next; setSnapshot(next); writeSnapshot(PRIVATE_STORAGE_KEY, next);
-    setSyncState('synced'); setMessage('');
+    snapshotRef.current = next; setSnapshot(next);
+    const saved = writeSnapshot(PRIVATE_STORAGE_KEY, next);
+    if (!saved) {
+      console.error('[Explore English][Storage] authenticated progress could not be cached locally.');
+      setMessage('云端进度已读取，但本机缓存保存失败。');
+    } else setMessage('');
+    setSyncState('synced');
     return true;
   }, []);
 
@@ -61,8 +66,9 @@ export function LearningProvider({ children }: PropsWithChildren) {
       setSyncState('syncing');
       void syncCloudSnapshot(next).then(canonical => {
         acceptCloudSnapshot(canonical, version);
-      }).catch(() => {
+      }).catch(error => {
         if (sessionVersion.current !== version) return;
+        console.error('[Explore English][Learning] background progress sync failed.', error);
         setSyncState('error'); setMessage('云同步失败，本机进度已保留，网络恢复后可重试。');
       });
     }
@@ -93,21 +99,29 @@ export function LearningProvider({ children }: PropsWithChildren) {
       acceptCloudSnapshot(canonical, version);
     } catch (error) {
       if (sessionVersion.current !== version) return;
+      console.error('[Explore English][Learning] login or state restoration failed.', error);
       setSyncState('error'); setMessage(error instanceof Error ? error.message : '微信登录失败。');
       throw error;
     }
   }, [acceptCloudSnapshot]);
 
   useEffect(() => {
-    const preference = taroStorage.get(AUTH_PREFERENCE_KEY);
-    if (preference === 'wechat') void login().catch(() => setGuest(false)).finally(() => setReady(true));
-    else setReady(true);
+    setReady(true);
+    try {
+      const preference = taroStorage.get(AUTH_PREFERENCE_KEY);
+      if (preference === 'wechat') void login().catch(() => setGuest(false));
+    } catch (error) {
+      console.error('[Explore English][Storage] authentication preference could not be restored.', error);
+      setGuest(false);
+    }
   }, [login]);
 
   useDidShow(() => {
     if (user && syncState === 'error') {
       const version = sessionVersion.current;
-      void syncCloudSnapshot(snapshotRef.current).then(next => { acceptCloudSnapshot(next, version); }).catch(() => undefined);
+      void syncCloudSnapshot(snapshotRef.current).then(next => { acceptCloudSnapshot(next, version); }).catch(error => {
+        console.error('[Explore English][Learning] page-show sync retry failed.', error);
+      });
     }
   });
 
@@ -115,7 +129,9 @@ export function LearningProvider({ children }: PropsWithChildren) {
     const handler = (event: Taro.onNetworkStatusChange.CallbackResult) => {
       if (event.isConnected && user && syncState === 'error') {
         const version = sessionVersion.current;
-        void syncCloudSnapshot(snapshotRef.current).then(next => { acceptCloudSnapshot(next, version); }).catch(() => undefined);
+        void syncCloudSnapshot(snapshotRef.current).then(next => { acceptCloudSnapshot(next, version); }).catch(error => {
+          console.error('[Explore English][Learning] network recovery sync failed.', error);
+        });
       }
     };
     Taro.onNetworkStatusChange(handler);
@@ -149,7 +165,10 @@ export function LearningProvider({ children }: PropsWithChildren) {
       const version = sessionVersion.current;
       setSyncState('syncing');
       try { const next = await syncCloudSnapshot(snapshotRef.current); acceptCloudSnapshot(next, version); }
-      catch { if (sessionVersion.current === version) { setSyncState('error'); setMessage('云同步仍未成功，本机进度保持不变。'); } }
+      catch (error) { if (sessionVersion.current === version) {
+        console.error('[Explore English][Learning] manual sync retry failed.', error);
+        setSyncState('error'); setMessage('云同步仍未成功，本机进度保持不变。');
+      } }
     },
   }), [acceptCloudSnapshot, guest, login, message, persist, ready, snapshot, syncState, user]);
 

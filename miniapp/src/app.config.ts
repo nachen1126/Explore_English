@@ -15,7 +15,4 @@ export default defineAppConfig({
   },
   style: 'v2',
   sitemapLocation: 'sitemap.json',
-  permission: {
-    'scope.record': { desc: '用于识别你练习的英语单词' },
-  },
 });
