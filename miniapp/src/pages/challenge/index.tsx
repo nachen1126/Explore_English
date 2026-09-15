@@ -104,8 +104,8 @@ export default function ChallengePage() {
       </View> : null}
       {revealed ? <View className='revealed-word card'><Text className='prompt-word'>{item.word}</Text>
         <Text className='muted'>{item.britishIPA} · UK</Text><PronunciationButton vocabularyId={item.id} /></View> : null}
-      <Input className='input' value={typed} onInput={event => setTyped(event.detail.value)} placeholder='Type the English word'
-        confirmType={solved ? 'next' : 'done'} disabled={solved}
+      <Input className='input' value={typed} onInput={event => { if (!solved) setTyped(event.detail.value); }}
+        placeholder={solved ? 'Press confirm for next question' : 'Type the English word'} confirmType={solved ? 'next' : 'done'}
         onConfirm={() => { if (solved) moveNext(); else submit(typed, 'typing'); }} />
       {!solved ? <Button className='button primary' disabled={!typed.trim()} onClick={() => submit(typed, 'typing')}>Check answer</Button> : null}
       {!solved ? <View className='row'><Button className='button' disabled={recorder.state === 'processing'} onClick={() => void recorder.start()}>🎙 {recorder.state === 'listening' ? 'Listening…' : recorder.state === 'processing' ? 'Processing…' : 'Speak answer'}</Button>
