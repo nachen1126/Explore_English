@@ -21,12 +21,16 @@ export function isCloudConfigured() { return environmentId.length > 0; }
 
 function cloudError(operation: string, error: unknown): Error {
   console.error(`[Explore English][CloudBase] ${operation} failed. Guest mode remains available.`, error);
-  return error instanceof Error ? error : new Error(`${operation} failed.`);
+  if (/speech recognition/i.test(operation)) return new Error('语音识别服务暂时不可用。');
+  if (/pronunciation/i.test(operation)) return new Error('发音暂时无法播放。');
+  if (/login/i.test(operation)) return new Error('微信登录失败，请检查网络后重试，或使用游客模式。');
+  if (/avatar/i.test(operation)) return new Error('头像上传失败，请检查网络后重试。');
+  return new Error('云服务请求失败，本机数据仍会保留。');
 }
 
 function withTimeout<T>(promise: Promise<T>, operation: string, milliseconds = 12000): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${operation} timed out after ${milliseconds}ms.`)), milliseconds);
+    const timer = setTimeout(() => reject(new Error('网络请求超时，请稍后重试。')), milliseconds);
     promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
   });
 }
@@ -48,14 +52,14 @@ export function initializeCloud(): boolean {
 }
 
 async function call<T>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
-  if (!isCloudConfigured()) throw new Error('CloudBase is not configured. You can continue as a guest.');
+  if (!isCloudConfigured()) throw new Error('云开发环境尚未配置，你仍可以使用游客模式。');
   try {
     const result = await withTimeout(
       Taro.cloud.callFunction({ name: 'user-service', data: { action, ...payload } }),
       `user-service:${action}`,
     );
     const body = result.result as ServiceResult<T>;
-    if (!body?.ok || body.data === undefined) throw new Error(body?.message || body?.error || 'CloudBase request failed.');
+    if (!body?.ok || body.data === undefined) throw new Error(body?.message || body?.error || '云服务请求失败。');
     return body.data;
   } catch (error) {
     throw cloudError(`user-service:${action}`, error);
@@ -65,7 +69,7 @@ async function call<T>(action: string, payload: Record<string, unknown> = {}): P
 export async function wechatLogin(): Promise<MiniappUser> {
   try {
     const session = await Taro.login({ timeout: 10000 });
-    if (!session.code) throw new Error('WeChat login did not return a valid code.');
+    if (!session.code) throw new Error('微信登录未返回有效凭证。');
     // Taro.cloud attaches the verified WeChat identity. The code is deliberately
     // not persisted and OpenID is read only inside the cloud function.
     return await call<MiniappUser>('login', { loginCodeReceived: true });
@@ -80,7 +84,7 @@ export const updateCloudProfile = (nickname: string | null, avatar: string | nul
   call<MiniappUser>('profile', { nickname, avatar });
 
 export async function uploadProfileAvatar(filePath: string, userId: string) {
-  if (!isCloudConfigured()) throw new Error('CloudBase is not configured.');
+  if (!isCloudConfigured()) throw new Error('云开发环境尚未配置。');
   try {
     const extension = filePath.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
     const uploaded = await Taro.cloud.uploadFile({ cloudPath: `avatars/${userId}/${Date.now()}.${extension}`, filePath });
@@ -91,15 +95,15 @@ export async function uploadProfileAvatar(filePath: string, userId: string) {
 }
 
 export async function recognizeRecording(filePath: string, recognitionId: string) {
-  if (!isCloudConfigured()) throw new Error('Speech recognition requires a configured CloudBase environment.');
+  if (!isCloudConfigured()) throw new Error('语音识别需要先配置云开发环境。');
   let uploaded: Taro.cloud.UploadFileResult | undefined;
   try {
     uploaded = await Taro.cloud.uploadFile({ cloudPath: `speech/${recognitionId}.mp3`, filePath });
-    const response = await Taro.cloud.callFunction({
+    const response = await withTimeout(Taro.cloud.callFunction({
       name: 'speech-recognize', data: { fileID: uploaded.fileID, recognitionId, format: 'mp3' },
-    });
+    }), 'speech-recognize', 20000);
     const body = response.result as ServiceResult<{ text: string; recognitionId: string; noSpeech?: boolean }>;
-    if (!body?.ok || body.data === undefined) throw new Error(body?.message || body?.error || 'Speech recognition failed.');
+    if (!body?.ok || body.data === undefined) throw new Error(body?.message || body?.error || '语音识别失败。');
     return body.data;
   } catch (error) {
     throw cloudError('speech recognition', error);
@@ -111,7 +115,7 @@ export async function recognizeRecording(filePath: string, recognitionId: string
 }
 
 export async function playPronunciation(vocabularyId: string, onPlaybackError?: (error: Error) => void) {
-  if (!isCloudConfigured()) throw new Error('Pronunciation audio requires a configured CloudBase environment.');
+  if (!isCloudConfigured()) throw new Error('播放发音需要先配置云开发环境。');
   const requestSequence = ++pronunciationRequestSequence;
   try {
     const safeVocabularyId = vocabularyId.replace(/[^a-z0-9-]/gi, '');
@@ -127,15 +131,15 @@ export async function playPronunciation(vocabularyId: string, onPlaybackError?: 
       );
       const body = response.result as ServiceResult<PronunciationResult>;
       if (!body?.ok || !body.data?.audioBase64) {
-        throw new Error(body?.message || body?.error || 'Pronunciation audio is unavailable.');
+        throw new Error(body?.message || body?.error || '发音音频暂时不可用。');
       }
       if (body.data.format !== 'wav' || !/^[a-z0-9.-]+$/i.test(body.data.cacheKey)) {
-        throw new Error('Pronunciation service returned an unsupported audio format.');
+        throw new Error('发音服务返回了不支持的音频格式。');
       }
       filePath = `${Taro.env.USER_DATA_PATH}/pronunciation-${safeVocabularyId}-${body.data.cacheKey}.wav`;
       await new Promise<void>((resolve, reject) => fileSystem.writeFile({
         filePath, data: body.data!.audioBase64, encoding: 'base64',
-        success: () => resolve(), fail: result => reject(new Error(result.errMsg || 'Audio file could not be saved.')),
+        success: () => resolve(), fail: result => reject(new Error(result.errMsg || '音频文件无法保存。')),
       }));
     }
     if (requestSequence !== pronunciationRequestSequence) return;
@@ -149,7 +153,7 @@ export async function playPronunciation(vocabularyId: string, onPlaybackError?: 
       audio.onPlay(() => { started = true; resolve(); });
       audio.onEnded(() => { audio.destroy(); if (activePronunciation === audio) activePronunciation = null; });
       audio.onError(result => {
-        const error = new Error(`Audio playback failed${result.errCode ? ` (${result.errCode})` : ''}: ${result.errMsg || 'unknown error'}`);
+        const error = new Error(`音频播放失败${result.errCode ? ` (${result.errCode})` : ''}：${result.errMsg || '未知错误'}`);
         console.error('[Explore English][Audio] pronunciation playback failed.', result);
         audio.destroy(); if (activePronunciation === audio) activePronunciation = null;
         onPlaybackError?.(error);

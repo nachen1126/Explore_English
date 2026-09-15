@@ -60,7 +60,7 @@ describe('startup and permission resilience', () => {
     taroMock.login.mockResolvedValueOnce({ code: 'temporary-code' });
     taroMock.cloud.callFunction.mockRejectedValueOnce(new Error('cloud unavailable'));
     const { wechatLogin } = await import('../src/services/cloud');
-    await expect(wechatLogin()).rejects.toThrow('cloud unavailable');
+    await expect(wechatLogin()).rejects.toThrow('微信登录失败');
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('WeChat login failed'), expect.any(Error),
     );

@@ -1,1 +1,1 @@
-export default definePageConfig({ navigationBarTitleText: 'Review Words' });
+export default definePageConfig({ navigationBarTitleText: '复习单词' });

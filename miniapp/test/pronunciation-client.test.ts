@@ -54,7 +54,7 @@ describe('mini-program pronunciation playback', () => {
       ok: false, error: 'AUDIO_ASSET_ERROR', message: 'The pronunciation audio could not be loaded.',
     } });
     const { playPronunciation } = await import('../src/services/cloud');
-    await expect(playPronunciation('kitchen-oven')).rejects.toThrow('pronunciation audio could not be loaded');
+    await expect(playPronunciation('kitchen-oven')).rejects.toThrow('发音暂时无法播放');
   });
 
   it('reuses a previously cached pronunciation without another cloud invocation', async () => {

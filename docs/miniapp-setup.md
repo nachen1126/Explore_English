@@ -89,16 +89,19 @@
 
 ## 7. 配置腾讯云语音识别
 
-录音 UI、1.2 秒最短说话保护、6 秒自动停止、Listening/Processing 状态、权限错误和文字输入替代路径均已实现。真正转写需要开通[腾讯云一句话识别](https://cloud.tencent.com/document/product/1093/35646)。
+语音回答现在是单次点击流程：点击“语音回答”后立即录音，约 3.6 秒后自动停止并识别，页面不再显示 Stop 按钮。微信 `RecorderManager` 的实时分帧是 MP3 编码数据，不能稳定地当作 PCM 音量使用，所以本版不做容易误判的伪 VAD，而采用稳定的短时定长自动录音。无语音、录音错误、网络错误和 ASR 错误都不会提交答案或计为答错。
 
-只在 `speech-recognize` 云函数环境变量或腾讯云密钥管理中设置：
+真正转写需要开通[腾讯云一句话识别](https://cloud.tencent.com/document/product/1093/35646)。请按以下步骤操作：
 
-- `TENCENT_SECRET_ID`
-- `TENCENT_SECRET_KEY`
-- `TENCENT_ASR_PROJECT_ID`
-- `TENCENT_ASR_REGION`（默认 `ap-shanghai`）
+1. 打开腾讯云控制台，搜索“语音识别”，进入后点击“立即开通”。
+2. 在腾讯云“访问管理 → 用户 → 新建子用户”创建一个仅用于语音识别的子账号，授予语音识别调用权限，再为它创建 API 密钥。不要使用主账号密钥。
+3. 打开 CloudBase 控制台，选择环境 `cloud1-d6gzm9ky0f3cabd8d`。
+4. 左侧点“云函数”，点击 `speech-recognize`，进入“函数配置”。
+5. 在“环境变量”中点“编辑”，必须新增 `TENCENT_SECRET_ID` 和 `TENCENT_SECRET_KEY`，值分别填上一步创建的 SecretId 和 SecretKey，不要加引号。
+6. `TENCENT_ASR_PROJECT_ID` 可选；没有单独建立 ASR 项目时可不填，云函数会使用默认项目 `0`。`TENCENT_ASR_REGION` 也可选，不填时使用 `ap-shanghai`。
+7. 保存环境变量。因为本次也修改了云函数代码，还要回到微信开发者工具，右键 `cloudfunctions/speech-recognize`，选择“上传并部署：云端安装依赖”。
 
-SecretId/SecretKey 仅用于语音回答识别，不用于 `Play pronunciation`。这些值不得写进 `.env`、小程序代码、GitHub Variables 或构建产物。建议创建最小权限的子账号密钥并定期轮换。未配置时函数不会返回假识别结果；页面会明确提示使用文字输入，录音失败、无声和网络错误都不计为答错。
+SecretId/SecretKey 仅用于语音回答识别，不用于“播放发音”。这些值不得写进 `.env`、小程序代码、GitHub Variables 或构建产物。未配置时函数不会返回假识别结果。
 
 `Play pronunciation` 使用 `speech-synthesize/audio/` 中随云函数部署的固定 WAV 文件。重新上传云函数时必须选择“上传并部署：云端安装依赖”，确保 `audio/` 目录一并上传；该播放功能不要求开通腾讯云语音合成，也不要求配置 TTS API Key。
 

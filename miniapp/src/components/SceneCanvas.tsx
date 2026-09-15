@@ -37,7 +37,7 @@ export function SceneCanvas({ discovered = [], targetId, onSelect }: Props) {
         setImageState('error');
       }} />
     {imageState !== 'ready' ? <View className='image-status'>
-      {imageState === 'loading' ? <Text>Loading the scene…</Text> : <>
+      {imageState === 'loading' ? <Text>正在加载场景…</Text> : <>
         <Text>场景图片加载失败，但学习记录仍然安全。</Text>
         <Button className='image-retry' onClick={() => { setImageState('loading'); setReloadKey(value => value + 1); }}>重新加载</Button>
       </>}

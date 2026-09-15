@@ -11,7 +11,7 @@ export default defineAppConfig({
   window: {
     navigationBarBackgroundColor: '#f7f3e9',
     navigationBarTextStyle: 'black',
-    navigationBarTitleText: 'Explore English',
+    navigationBarTitleText: '探索英语',
     backgroundColor: '#f7f3e9',
   },
   style: 'v2',

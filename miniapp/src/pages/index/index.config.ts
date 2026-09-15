@@ -1,1 +1,1 @@
-export default definePageConfig({ navigationBarTitleText: 'Explore English' });
+export default definePageConfig({ navigationBarTitleText: '探索英语' });

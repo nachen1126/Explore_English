@@ -1,1 +1,1 @@
-export default definePageConfig({ navigationBarTitleText: 'Challenge Result' });
+export default definePageConfig({ navigationBarTitleText: '挑战结果' });

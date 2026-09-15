@@ -1,1 +1,1 @@
-{ "desc": "Explore English Mini Program", "rules": [{ "action": "allow", "page": "*" }] }
+{ "desc": "探索英语小程序", "rules": [{ "action": "allow", "page": "*" }] }

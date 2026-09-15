@@ -1,1 +1,1 @@
-export default definePageConfig({ navigationBarTitleText: 'Kitchen Challenge' });
+export default definePageConfig({ navigationBarTitleText: '厨房挑战' });
