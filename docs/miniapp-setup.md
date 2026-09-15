@@ -45,12 +45,14 @@
 
 在微信开发者工具中导入 `miniapp/` 后，选择对应云环境；在“云函数”目录中分别右键并选择“上传并部署：云端安装依赖”：
 
-- `user-service`：登录、资料、拉取、合并和同步进度
+- `user-service`：登录、资料、拉取、合并和同步进度，并验证完整挑战、弱词练习及三次答错后的答案提示记录
 - `speech-recognize`：录音文件转写；未配置 ASR 时明确返回 `ASR_NOT_CONFIGURED`
 - `speech-synthesize`：读取并返回随云函数部署的 10 个 Kitchen 标准英语 WAV 发音；不需要 TTS 密钥
 - `admin-stats-http`：网页版管理员统计的 HTTPS 网关函数
 
 也可以使用 CloudBase CLI 部署。部署前必须选择正确环境，切勿在命令或配置文件中硬编码密钥。
+
+每次更新 `miniapp/cloudfunctions/user-service/` 后，都要重新右键该目录并选择“上传并部署：云端安装依赖”。否则新版小程序创建的弱词练习记录会被旧版云函数拒绝，但记录仍会先保存在本机。
 
 函数运行时请选择 Node.js 18 或更新版本。云存储规则设置为“仅创建者可读写”；录音上传后由 `speech-recognize` 在 `finally` 流程中删除，不能把语音文件设置为公开读。
 

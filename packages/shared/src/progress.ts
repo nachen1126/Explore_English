@@ -38,6 +38,15 @@ export function mergeLearningSnapshots(local: LearningSnapshot, cloud: LearningS
       updatedAt: Math.max(localProgress?.updatedAt ?? 0, cloudProgress?.updatedAt ?? 0), schemaVersion: 1,
     };
   }
-  merged.attempts = { ...cloud.attempts, ...local.attempts };
+  merged.attempts = { ...cloud.attempts };
+  for (const [attemptId, localAttempt] of Object.entries(local.attempts)) {
+    const cloudAttempt = merged.attempts[attemptId];
+    if (!cloudAttempt) { merged.attempts[attemptId] = localAttempt; continue; }
+    const localAnswers = localAttempt.questions.reduce((sum, question) => sum + question.answers.length, 0);
+    const cloudAnswers = cloudAttempt.questions.reduce((sum, question) => sum + question.answers.length, 0);
+    if ((localAttempt.completedAt !== null && cloudAttempt.completedAt === null) || localAnswers > cloudAnswers) {
+      merged.attempts[attemptId] = localAttempt;
+    }
+  }
   return merged;
 }

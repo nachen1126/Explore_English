@@ -1,3 +1,15 @@
 .result-page text { display: block; }
+.result-title { margin-top: 14px; font-family: Georgia, serif; font-size: 50px; font-weight: 700; }
+.result-description { margin-top: 12px; color: #65736d; font-size: 26px; line-height: 1.5; }
+.score-card { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center; }
+.score { font-family: Georgia, serif; font-size: 48px; font-weight: 700; }
+.score-label { margin-top: 5px; color: #65736d; font-size: 21px; }
 .accuracy { font-size: 32px; color: #bb5d38; font-weight: 700; }
 .section-title { margin-bottom: 14px; font-size: 30px; font-weight: 700; }
+.result-actions { margin-top: 24px; }
+.attempt-row { padding: 18px 0; border-top: 1px solid #ded9cc; }
+.attempt-row:first-of-type { border-top: 0; }
+.attempt-row text + text { margin-top: 6px; font-size: 22px; }
+.attempt-row .remembered { color: #285c4d; }
+.attempt-row .practice { color: #8a2630; }
+.button.subtle { background: transparent; }

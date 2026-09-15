@@ -2,5 +2,8 @@
 .word-heading { display: flex; align-items: baseline; gap: 18px; }
 .word { font-family: Georgia, serif; font-size: 48px; font-weight: 700; }
 .ipa { color: #bb5d38; font-size: 25px; }
+.part-of-speech { margin-top: 8px; color: #65736d; font-size: 23px; }
 .meaning { margin-top: 12px; font-size: 30px; }
 .example { margin-top: 18px; color: #65736d; font-size: 26px; line-height: 1.5; }
+.pronunciation-status { margin-top: 10px; color: #65736d; font-size: 22px; line-height: 1.4; }
+.pronunciation-status.error { color: #8a2630; }

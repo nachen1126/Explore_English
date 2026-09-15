@@ -5,6 +5,7 @@ export default defineAppConfig({
     'pages/scene/index',
     'pages/challenge/index',
     'pages/result/index',
+    'pages/review/index',
     'pages/profile/index',
   ],
   window: {

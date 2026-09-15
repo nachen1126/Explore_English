@@ -15,6 +15,7 @@ interface PronunciationResult { audioBase64: string; format: 'wav'; cacheKey: st
 const environmentId = process.env.TARO_APP_CLOUDBASE_ENV?.trim() ?? '';
 const pronunciationCacheKey = 'kitchen-standard-en-v1';
 let activePronunciation: Taro.InnerAudioContext | null = null;
+let pronunciationRequestSequence = 0;
 
 export function isCloudConfigured() { return environmentId.length > 0; }
 
@@ -111,6 +112,7 @@ export async function recognizeRecording(filePath: string, recognitionId: string
 
 export async function playPronunciation(vocabularyId: string, onPlaybackError?: (error: Error) => void) {
   if (!isCloudConfigured()) throw new Error('Pronunciation audio requires a configured CloudBase environment.');
+  const requestSequence = ++pronunciationRequestSequence;
   try {
     const safeVocabularyId = vocabularyId.replace(/[^a-z0-9-]/gi, '');
     const fileSystem = Taro.getFileSystemManager();
@@ -136,6 +138,7 @@ export async function playPronunciation(vocabularyId: string, onPlaybackError?: 
         success: () => resolve(), fail: result => reject(new Error(result.errMsg || 'Audio file could not be saved.')),
       }));
     }
+    if (requestSequence !== pronunciationRequestSequence) return;
     if (activePronunciation) { activePronunciation.stop(); activePronunciation.destroy(); }
     const audio = Taro.createInnerAudioContext();
     activePronunciation = audio;
@@ -160,6 +163,7 @@ export async function playPronunciation(vocabularyId: string, onPlaybackError?: 
 }
 
 export function stopPronunciation() {
+  pronunciationRequestSequence += 1;
   if (!activePronunciation) return;
   activePronunciation.stop(); activePronunciation.destroy(); activePronunciation = null;
 }

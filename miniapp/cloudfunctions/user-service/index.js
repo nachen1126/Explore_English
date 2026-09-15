@@ -1,20 +1,12 @@
 'use strict';
 const cloud = require('wx-server-sdk');
 const { safeUserId, ownedDocumentId } = require('./identity');
-const { answerIsCorrect } = require('./challenge-policy');
+const { SCENE_ID, VOCABULARY_IDS, vocabulary, object, finite, cleanAttempt, attemptStats } = require('./challenge-schema');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
-const SCENE_ID = 'kitchen-2';
-const VOCABULARY_IDS = [
-  'kitchen-fridge','kitchen-sink','kitchen-oven','kitchen-hob','kitchen-kettle','kitchen-pan',
-  'kitchen-chopping-board','kitchen-cupboard','kitchen-spatula','kitchen-microwave',
-];
-const vocabulary = new Set(VOCABULARY_IDS);
 const ok = data => ({ ok: true, data });
 const fail = (error, message) => ({ ok: false, error, message });
-const object = value => value && typeof value === 'object' && !Array.isArray(value);
-const finite = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 
 async function readAll(collection, userId) {
   const rows = [];
@@ -23,49 +15,6 @@ async function readAll(collection, userId) {
     rows.push(...page.data);
     if (page.data.length < 100) return rows;
   }
-}
-
-function cleanQuestion(question, attemptId) {
-  if (!object(question) || typeof question.id !== 'string' || !question.id.startsWith(`${attemptId}-`)
-    || typeof question.vocabularyId !== 'string' || !vocabulary.has(question.vocabularyId)
-    || !['find', 'produce'].includes(question.mode) || !Array.isArray(question.answers)) return null;
-  const recognitionIds = new Set();
-  const answers = [];
-  for (const answer of question.answers) {
-    if (!object(answer) || typeof answer.answer !== 'string' || answer.answer.length > 120
-      || typeof answer.correct !== 'boolean' || !finite(answer.at)
-      || !['hotspot', 'typing', 'speech'].includes(answer.source)) return null;
-    if (answer.recognitionId !== undefined) {
-      if (answer.source !== 'speech' || typeof answer.recognitionId !== 'string' || recognitionIds.has(answer.recognitionId)) return null;
-      recognitionIds.add(answer.recognitionId);
-    }
-    answers.push({ answer: answer.answer,
-      correct: answerIsCorrect(answer.answer, answer.source, question.vocabularyId), at: answer.at, source: answer.source,
-      ...(answer.recognitionId ? { recognitionId: answer.recognitionId } : {}) });
-  }
-  return { id: question.id, vocabularyId: question.vocabularyId, mode: question.mode, answers };
-}
-
-function cleanAttempt(value) {
-  if (!object(value) || typeof value.attemptId !== 'string' || value.attemptId.length > 80
-    || value.sceneId !== SCENE_ID || !finite(value.startedAt) || !(value.completedAt === null || finite(value.completedAt))
-    || !Array.isArray(value.questions) || value.questions.length !== VOCABULARY_IDS.length) return null;
-  const questions = value.questions.map(question => cleanQuestion(question, value.attemptId));
-  if (questions.some(question => !question)) return null;
-  const ids = new Set(questions.map(question => question.vocabularyId));
-  if (ids.size !== VOCABULARY_IDS.length || VOCABULARY_IDS.some(id => !ids.has(id))) return null;
-  const completed = questions.every(question => question.answers.some(answer => answer.correct));
-  const completedAt = completed ? Math.max(...questions.flatMap(question => question.answers.map(answer => answer.at))) : null;
-  return { attemptId: value.attemptId, sceneId: SCENE_ID, questions, startedAt: value.startedAt, completedAt };
-}
-
-function attemptStats(attempt) {
-  const remembered = attempt.questions.filter(question => question.answers[0]?.correct === true).map(question => question.vocabularyId);
-  const needsPractice = attempt.questions.filter(question => question.answers[0]?.correct === false).map(question => question.vocabularyId);
-  return {
-    firstAttemptResults: attempt.questions.map(question => ({ vocabularyId: question.vocabularyId, correct: question.answers[0]?.correct === true })),
-    score: remembered.length, remembered, needsPractice,
-  };
 }
 
 async function pull(userId) {
@@ -77,7 +26,7 @@ async function pull(userId) {
   };
   const attempts = {};
   for (const row of attemptRows) attempts[row.attemptId] = {
-    attemptId: row.attemptId, sceneId: row.sceneId, questions: row.questions,
+    attemptId: row.attemptId, sceneId: row.sceneId, kind: row.kind || 'full', questions: row.questions,
     startedAt: row.startedAt, completedAt: row.completedAt ?? null,
   };
   return { schemaVersion: 1, progress, attempts };

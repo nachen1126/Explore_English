@@ -2,7 +2,8 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import {
   createChallenge, discoverVocabulary, kitchenScene, mergeLearningSnapshots,
-  recordChallengeAnswer, saveAttempt, type AnswerRecord, type ChallengeAttempt, type LearningSnapshot,
+  recordChallengeAnswer, revealChallengeAnswer, saveAttempt, weakVocabularyIds,
+  type AnswerRecord, type ChallengeAttempt, type LearningSnapshot,
 } from '@shared';
 import {
   pullCloudSnapshot, syncCloudSnapshot, updateCloudProfile, wechatLogin, type MiniappUser,
@@ -25,8 +26,10 @@ interface LearningContextValue {
   logout(): void;
   updateProfile(nickname: string | null, avatar: string | null): Promise<void>;
   discover(vocabularyId: string): void;
-  createAttempt(): ChallengeAttempt;
+  restartScene(): void;
+  createAttempt(kind?: ChallengeAttempt['kind'], vocabularyIds?: string[]): ChallengeAttempt;
   answer(attemptId: string, questionId: string, record: AnswerRecord): ChallengeAttempt | null;
+  reveal(attemptId: string, questionId: string): ChallengeAttempt | null;
   retrySync(): Promise<void>;
 }
 
@@ -80,7 +83,9 @@ export function LearningProvider({ children }: PropsWithChildren) {
     setMessage(''); setSyncState('syncing');
     try {
       const nextUser = await wechatLogin();
+      if (sessionVersion.current !== version) return;
       const cloud = await pullCloudSnapshot();
+      if (sessionVersion.current !== version) return;
       const local = readSnapshot(GUEST_STORAGE_KEY);
       let next = cloud;
       const mergeDecisionKey = `${GUEST_MERGE_KEY_PREFIX}${nextUser.id}`;
@@ -90,6 +95,7 @@ export function LearningProvider({ children }: PropsWithChildren) {
           content: '合并会取本机和云端的已发现单词并集，不会用空记录覆盖云端。',
           confirmText: '合并', cancelText: '仅用云端',
         });
+        if (sessionVersion.current !== version) return;
         if (decision.confirm) next = mergeLearningSnapshots(local, cloud, [kitchenScene]);
         taroStorage.set(mergeDecisionKey, true);
       }
@@ -140,23 +146,50 @@ export function LearningProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<LearningContextValue>(() => ({
     snapshot, user, guest, ready, syncState, message,
-    continueAsGuest() { setGuest(true); setMessage(''); },
+    continueAsGuest() {
+      sessionVersion.current += 1;
+      taroStorage.remove(AUTH_PREFERENCE_KEY); setUser(null); setGuest(true); setSyncState('local'); setMessage('');
+      const local = readSnapshot(GUEST_STORAGE_KEY); snapshotRef.current = local; setSnapshot(local);
+    },
     async login() { await login(); },
     logout() {
       sessionVersion.current += 1;
       clearPrivateStorage(); setUser(null); setGuest(true); setSyncState('local'); setMessage('');
       const local = readSnapshot(GUEST_STORAGE_KEY); snapshotRef.current = local; setSnapshot(local);
     },
-    async updateProfile(nickname, avatar) { const next = await updateCloudProfile(nickname, avatar); setUser(next); },
+    async updateProfile(nickname, avatar) {
+      try {
+        const next = await updateCloudProfile(nickname, avatar); setUser(next); setMessage('资料已保存。');
+      } catch (error) {
+        console.error('[Explore English][Profile] profile update failed.', error);
+        setMessage('资料保存失败，请检查网络后重试。');
+        throw error;
+      }
+    },
     discover(vocabularyId) { persist(discoverVocabulary(snapshotRef.current, kitchenScene, vocabularyId, Date.now())); },
-    createAttempt() {
-      const attempt = createChallenge(kitchenScene, uniqueAttemptId(), Date.now());
+    restartScene() {
+      const next: LearningSnapshot = { ...snapshotRef.current, progress: { ...snapshotRef.current.progress } };
+      delete next.progress[kitchenScene.id];
+      persist(next);
+    },
+    createAttempt(kind = 'full', vocabularyIds) {
+      const selected = kind === 'weak'
+        ? (vocabularyIds ?? weakVocabularyIds(Object.values(snapshotRef.current.attempts)))
+        : kitchenScene.vocabularyIds;
+      const attempt = createChallenge(kitchenScene, uniqueAttemptId(), Date.now(), Math.random, kind, selected);
       persist(saveAttempt(snapshotRef.current, attempt)); return attempt;
     },
     answer(attemptId, questionId, record) {
       const attempt = snapshotRef.current.attempts[attemptId];
       if (!attempt) return null;
       const nextAttempt = recordChallengeAnswer(attempt, questionId, record);
+      if (nextAttempt === attempt) return attempt;
+      persist(saveAttempt(snapshotRef.current, nextAttempt)); return nextAttempt;
+    },
+    reveal(attemptId, questionId) {
+      const attempt = snapshotRef.current.attempts[attemptId];
+      if (!attempt) return null;
+      const nextAttempt = revealChallengeAnswer(attempt, questionId, Date.now());
       if (nextAttempt === attempt) return attempt;
       persist(saveAttempt(snapshotRef.current, nextAttempt)); return nextAttempt;
     },

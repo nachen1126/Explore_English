@@ -54,11 +54,14 @@ export interface ChallengeQuestion {
   vocabularyId: string;
   mode: QuestionMode;
   answers: AnswerRecord[];
+  revealedAt?: number;
+  answerRequiredAfterReveal?: true;
 }
 
 export interface ChallengeAttempt {
   attemptId: string;
   sceneId: string;
+  kind: 'full' | 'weak';
   questions: ChallengeQuestion[];
   startedAt: number;
   completedAt: number | null;

@@ -1,7 +1,15 @@
 .challenge-page text { display: block; }
+.page-actions { display: flex; justify-content: space-between; margin-bottom: 22px; color: #285c4d; font-size: 24px; font-weight: 700; }
 .challenge-top { display: flex; justify-content: space-between; align-items: center; }
 .prompt { margin-bottom: 24px; }
 .prompt-label { color: #65736d; font-size: 24px; }
 .prompt-word { margin: 12px 0; font-family: Georgia, serif; font-size: 52px; font-weight: 700; }
 .meaning { margin: 12px 0; font-size: 40px; font-weight: 700; }
 .challenge-page .input { margin-top: 24px; }
+.section-title { margin-bottom: 12px; font-size: 30px; font-weight: 700; }
+.letter-hint { margin-top: 14px; color: #bb5d38; font-size: 27px; letter-spacing: 3px; }
+.attempt-count { margin-top: 8px; font-size: 23px; }
+.feedback.correct { background: #dceee3; }
+.score-note { margin: 22px 0 34px; color: #65736d; font-size: 22px; text-align: center; }
+.answer-next { margin-bottom: 24px; }
+.empty-page text { display: block; }

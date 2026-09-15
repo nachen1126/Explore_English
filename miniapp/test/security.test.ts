@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 const require = createRequire(import.meta.url);
 const { safeUserId, ownedDocumentId } = require('../cloudfunctions/user-service/identity.js');
 const { answerIsCorrect } = require('../cloudfunctions/user-service/challenge-policy.js');
+const { cleanAttempt } = require('../cloudfunctions/user-service/challenge-schema.js');
 const { verifyAdministrator } = require('../cloudfunctions/admin-stats-http/policy.js');
 
 describe('CloudBase identity boundaries', () => {
@@ -26,5 +27,20 @@ describe('CloudBase identity boundaries', () => {
     expect(answerIsCorrect('oven', 'typing', 'kitchen-oven')).toBe(true);
     expect(answerIsCorrect('fridge', 'typing', 'kitchen-oven')).toBe(false);
     expect(answerIsCorrect('kitchen-oven', 'hotspot', 'kitchen-oven')).toBe(true);
+  });
+  it('accepts a real weak-word attempt but still rejects an incomplete full challenge', () => {
+    const question = { id: 'weak-1-0', vocabularyId: 'kitchen-oven', mode: 'produce', answers: [] };
+    expect(cleanAttempt({ attemptId: 'weak-1', sceneId: 'kitchen-2', kind: 'weak', startedAt: 1, completedAt: null,
+      questions: [question] })).toEqual(expect.objectContaining({ kind: 'weak', questions: [question] }));
+    expect(cleanAttempt({ attemptId: 'weak-1', sceneId: 'kitchen-2', kind: 'full', startedAt: 1, completedAt: null,
+      questions: [question] })).toBeNull();
+  });
+  it('validates reveal records and recomputes their answers on the server', () => {
+    const answers = [1, 2, 3].map(at => ({ answer: 'fridge', correct: true, at, source: 'typing' }));
+    const attempt = cleanAttempt({ attemptId: 'weak-2', sceneId: 'kitchen-2', kind: 'weak', startedAt: 1, completedAt: null,
+      questions: [{ id: 'weak-2-0', vocabularyId: 'kitchen-oven', mode: 'produce', answers,
+        revealedAt: 4, answerRequiredAfterReveal: true }] });
+    expect(attempt.questions[0].answers.every((answer: { correct: boolean }) => !answer.correct)).toBe(true);
+    expect(attempt.questions[0].revealedAt).toBe(4);
   });
 });

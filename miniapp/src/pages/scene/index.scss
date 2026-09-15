@@ -1,4 +1,9 @@
 .scene-page text { display: block; }
+.page-actions { display: flex; justify-content: space-between; margin-bottom: 22px; color: #285c4d; font-size: 24px; font-weight: 700; }
 .scene-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 .scene-name { font-family: Georgia, serif; font-size: 42px; font-weight: 700; }
 .hint { margin-top: 18px; color: #65736d; font-size: 24px; line-height: 1.5; }
+.section-title { margin-bottom: 10px; font-size: 30px; font-weight: 700; }
+.scene-tools { margin-top: 24px; }
+.button.subtle { background: transparent; color: #7b351e; }
+.completion { margin-bottom: 30px; }
