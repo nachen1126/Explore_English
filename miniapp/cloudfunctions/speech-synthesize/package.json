@@ -1,0 +1,9 @@
+{
+  "name": "speech-synthesize",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "tencentcloud-sdk-nodejs-tts": "4.1.237",
+    "wx-server-sdk": "4.0.2"
+  }
+}

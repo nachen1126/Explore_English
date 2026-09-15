@@ -18,3 +18,10 @@ Thumbs.db
 # Logs
 *.log
 
+# WeChat / CloudBase local secrets and generated mini-program output
+miniapp/project.private.config.json
+miniapp/cloudfunctions/**/tcb_custom_login.json
+miniapp/cloudfunctions/**/.env*
+miniapp/dist/
+miniapp/.swc/
+

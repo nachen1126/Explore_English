@@ -12,6 +12,7 @@ interface AuthContextValue {
   profile: Profile | null;
   isAdmin: boolean;
   adminChecked: boolean;
+  accessToken: string | null;
   signUp: (email: string, password: string, nickname: string) => Promise<string>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -102,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
     setProfile({ nickname: value });
   }
-  return <AuthContext.Provider value={{ status, user: session?.user ?? null, profile, isAdmin, adminChecked,
+  return <AuthContext.Provider value={{ status, user: session?.user ?? null, profile, isAdmin, adminChecked, accessToken: session?.access_token ?? null,
     signUp, signIn, signOut, sendPasswordReset, updatePassword, updateNickname }}>{children}</AuthContext.Provider>;
 }
 

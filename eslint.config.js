@@ -3,8 +3,9 @@ import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'coverage/**', 'node_modules/**'] },
+  { ignores: ['dist/**', 'coverage/**', 'node_modules/**', 'miniapp/dist/**', 'packages/shared/dist/**'] },
   { ...js.configs.recommended, files: ['**/*.{js,mjs}'], languageOptions: { globals: globals.node } },
   ...tseslint.configs.recommended,
   { files: ['src/**/*.{ts,tsx}'], languageOptions: { globals: globals.browser } },
+  { files: ['miniapp/cloudfunctions/**/*.js'], rules: { '@typescript-eslint/no-require-imports': 'off' } },
 );

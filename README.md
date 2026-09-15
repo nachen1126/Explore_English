@@ -1,5 +1,18 @@
 # Explore English
 
+## WeChat Mini Program MVP
+
+The existing Vite website remains the production web application. A separate Taro 4 + React + TypeScript WeChat Mini Program lives in [`miniapp/`](miniapp/), with framework-neutral Kitchen content and challenge logic in [`packages/shared/`](packages/shared/).
+
+The first mini-program release contains only `Food & Dining → Kitchen · Cooking`. Setup, CloudBase collections, security rules, cloud functions, WeChat DevTools import, ASR/TTS configuration and review steps are documented in [`docs/miniapp-setup.md`](docs/miniapp-setup.md).
+
+```sh
+cd miniapp
+pnpm install --frozen-lockfile
+pnpm run test
+pnpm run build:weapp
+```
+
 Learn useful English through illustrated places: choose a category, choose an available scene, discover every object, then complete a Find It / Say It or Type It challenge and review your first-answer result.
 
 Live: [Explore English on GitHub Pages](https://nachen1126.github.io/Explore_English/#/)

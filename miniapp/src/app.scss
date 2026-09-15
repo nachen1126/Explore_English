@@ -1,0 +1,18 @@
+page { background: #f7f3e9; color: #18332b; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+view, text, image, input, button { box-sizing: border-box; }
+.page { min-height: 100vh; padding: 32px; }
+.eyebrow { color: #bb5d38; font-size: 22px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+.title { margin: 12px 0; font-family: Georgia, serif; font-size: 58px; line-height: 1.05; }
+.muted { color: #65736d; }
+.card { margin-top: 26px; padding: 28px; border: 2px solid #d7d3c6; border-radius: 24px; background: #fffefa; box-shadow: 0 10px 28px rgba(24,51,43,.08); }
+.button { display: flex; align-items: center; justify-content: center; min-height: 84px; margin: 16px 0 0; padding: 0 28px; border: 0; border-radius: 18px; background: #e7eee8; color: #18332b; font-weight: 700; font-size: 28px; }
+.button::after { border: 0; }
+.button.primary { background: #285c4d; color: white; }
+.button.warn { background: #f3e0d8; color: #7b351e; }
+.progress { height: 14px; margin: 18px 0; overflow: hidden; border-radius: 999px; background: #e4e0d5; }
+.progress-fill { height: 100%; border-radius: inherit; background: #bb5d38; }
+.status { margin-top: 18px; padding: 18px; border-radius: 14px; background: #e7eee8; }
+.status.error { background: #f6e2e2; color: #8a2630; }
+.input { width: 100%; min-height: 80px; padding: 0 22px; border: 2px solid #c8c5b9; border-radius: 16px; background: white; font-size: 30px; }
+.row { display: flex; gap: 16px; align-items: center; }
+.row .button { flex: 1; }

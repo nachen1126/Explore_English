@@ -1,5 +1,6 @@
 import type { ChallengeAttempt, ChallengeQuestion, LearningState, Scene, VocabularyItem, AnswerRecord, Topic } from './types';
 import { topics as defaultTopics } from './data';
+import { matchesAnswer, normalizeAnswer } from '../packages/shared/src';
 
 export const SCHEMA_VERSION = 2 as const;
 export const STORAGE_KEY = 'explore-english-v2';
@@ -16,17 +17,9 @@ const LEGACY_VOCABULARY_IDS: Record<string, string> = {
 };
 export const emptyState = (): LearningState => ({ schemaVersion: SCHEMA_VERSION, scenes: {}, attempts: {} });
 
-export function normalize(answer: string): string {
-  return answer.normalize('NFKC').toLowerCase()
-    .replace(/[’‘]/g, "'")
-    .replace(/[^\p{L}\p{N}\s']/gu, ' ')
-    .replace(/'/g, '')
-    .replace(/\s+/g, ' ').trim()
-    .replace(/^(?:(?:it is|its|this is|that is) )?(?:(?:a|an|the) )?/, '');
-}
+export const normalize = normalizeAnswer;
 export const matches = (answer: string, item: VocabularyItem): boolean => {
-  const normalized = normalize(answer);
-  return normalized.length > 0 && [item.word, ...item.acceptedAnswers].some(value => normalize(value) === normalized);
+  return matchesAnswer(answer, item);
 };
 export const wrongAttempts = (question: ChallengeQuestion) => question.answers.filter(answer => !answer.correct).length;
 export const hasHint = (question: ChallengeQuestion) => question.mode === 'produce' && wrongAttempts(question) >= 3;

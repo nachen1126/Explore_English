@@ -1,0 +1,6 @@
+{
+  "name": "admin-stats-http",
+  "private": true,
+  "main": "index.js",
+  "dependencies": { "wx-server-sdk": "4.0.2" }
+}

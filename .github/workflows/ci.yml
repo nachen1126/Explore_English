@@ -17,4 +17,14 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: corepack enable
+      - run: corepack prepare pnpm@11.19.0 --activate
+      - run: pnpm install --frozen-lockfile
+        working-directory: miniapp
+      - run: pnpm run typecheck
+        working-directory: miniapp
+      - run: pnpm run test
+        working-directory: miniapp
+      - run: pnpm run build:weapp
+        working-directory: miniapp
       - run: docker build -t explore-english:ci .

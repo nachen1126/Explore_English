@@ -1,0 +1,15 @@
+{
+  "miniprogramRoot": "dist/",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "projectname": "Explore English Miniapp",
+  "description": "Taro 4 WeChat Mini Program MVP",
+  "appid": "touristappid",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram"
+}
