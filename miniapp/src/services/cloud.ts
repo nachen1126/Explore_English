@@ -11,7 +11,10 @@ export interface MiniappUser {
 }
 
 interface ServiceResult<T> { ok: boolean; data?: T; error?: string; message?: string }
+interface PronunciationResult { audioBase64: string; format: 'wav'; cacheKey: string }
 const environmentId = process.env.TARO_APP_CLOUDBASE_ENV?.trim() ?? '';
+const pronunciationCacheKey = 'kitchen-standard-en-v1';
+let activePronunciation: Taro.InnerAudioContext | null = null;
 
 export function isCloudConfigured() { return environmentId.length > 0; }
 
@@ -106,19 +109,57 @@ export async function recognizeRecording(filePath: string, recognitionId: string
   }
 }
 
-export async function playPronunciation(vocabularyId: string) {
+export async function playPronunciation(vocabularyId: string, onPlaybackError?: (error: Error) => void) {
   if (!isCloudConfigured()) throw new Error('Pronunciation audio requires a configured CloudBase environment.');
   try {
-    const response = await Taro.cloud.callFunction({ name: 'speech-synthesize', data: { vocabularyId } });
-    const body = response.result as ServiceResult<{ fileID: string }>;
-    if (!body?.ok || !body.data?.fileID) throw new Error(body?.message || body?.error || 'Pronunciation audio is unavailable.');
-    const temporary = await Taro.cloud.getTempFileURL({ fileList: [body.data.fileID] });
-    const url = temporary.fileList[0]?.tempFileURL;
-    if (!url) throw new Error('Pronunciation audio could not be loaded.');
+    const safeVocabularyId = vocabularyId.replace(/[^a-z0-9-]/gi, '');
+    const fileSystem = Taro.getFileSystemManager();
+    let filePath = `${Taro.env.USER_DATA_PATH}/pronunciation-${safeVocabularyId}-${pronunciationCacheKey}.wav`;
+    const cached = await new Promise<boolean>(resolve => fileSystem.access({
+      path: filePath, success: () => resolve(true), fail: () => resolve(false),
+    }));
+    if (!cached) {
+      const response = await withTimeout(
+        Taro.cloud.callFunction({ name: 'speech-synthesize', data: { vocabularyId } }),
+        'speech-synthesize',
+      );
+      const body = response.result as ServiceResult<PronunciationResult>;
+      if (!body?.ok || !body.data?.audioBase64) {
+        throw new Error(body?.message || body?.error || 'Pronunciation audio is unavailable.');
+      }
+      if (body.data.format !== 'wav' || !/^[a-z0-9.-]+$/i.test(body.data.cacheKey)) {
+        throw new Error('Pronunciation service returned an unsupported audio format.');
+      }
+      filePath = `${Taro.env.USER_DATA_PATH}/pronunciation-${safeVocabularyId}-${body.data.cacheKey}.wav`;
+      await new Promise<void>((resolve, reject) => fileSystem.writeFile({
+        filePath, data: body.data!.audioBase64, encoding: 'base64',
+        success: () => resolve(), fail: result => reject(new Error(result.errMsg || 'Audio file could not be saved.')),
+      }));
+    }
+    if (activePronunciation) { activePronunciation.stop(); activePronunciation.destroy(); }
     const audio = Taro.createInnerAudioContext();
-    audio.autoplay = true; audio.src = url;
-    audio.onEnded(() => audio.destroy()); audio.onError(() => audio.destroy());
+    activePronunciation = audio;
+    audio.obeyMuteSwitch = false;
+    audio.src = filePath;
+    await new Promise<void>((resolve, reject) => {
+      let started = false;
+      audio.onPlay(() => { started = true; resolve(); });
+      audio.onEnded(() => { audio.destroy(); if (activePronunciation === audio) activePronunciation = null; });
+      audio.onError(result => {
+        const error = new Error(`Audio playback failed${result.errCode ? ` (${result.errCode})` : ''}: ${result.errMsg || 'unknown error'}`);
+        console.error('[Explore English][Audio] pronunciation playback failed.', result);
+        audio.destroy(); if (activePronunciation === audio) activePronunciation = null;
+        onPlaybackError?.(error);
+        if (!started) reject(error);
+      });
+      audio.play();
+    });
   } catch (error) {
     throw cloudError('pronunciation', error);
   }
+}
+
+export function stopPronunciation() {
+  if (!activePronunciation) return;
+  activePronunciation.stop(); activePronunciation.destroy(); activePronunciation = null;
 }

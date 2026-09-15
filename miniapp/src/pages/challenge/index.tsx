@@ -1,4 +1,4 @@
-import Taro, { getCurrentInstance } from '@tarojs/taro';
+import Taro, { getCurrentInstance, useUnload } from '@tarojs/taro';
 import { Button, Input, Text, View } from '@tarojs/components';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -7,7 +7,7 @@ import {
 import { SceneCanvas } from '../../components/SceneCanvas';
 import { useRecorder } from '../../hooks/useRecorder';
 import { useLearning } from '../../state/learning';
-import { playPronunciation } from '../../services/cloud';
+import { playPronunciation, stopPronunciation } from '../../services/cloud';
 import '../../components/SceneCanvas.scss';
 import './index.scss';
 
@@ -32,6 +32,7 @@ export default function ChallengePage() {
 
   const onRecognized = useCallback((text: string, recognitionId: string) => submit(text, 'speech', recognitionId), [submit]);
   const recorder = useRecorder(onRecognized);
+  useUnload(stopPronunciation);
   const completedCount = useMemo(() => attempt?.questions.filter(value => value.answers.some(record => record.correct)).length ?? 0, [attempt]);
 
   if (!attempt) return <View className='page'><Text className='title'>Challenge unavailable</Text><Text>未找到挑战记录，请返回场景重新开始。</Text></View>;
@@ -41,7 +42,12 @@ export default function ChallengePage() {
     <View className='progress'><View className='progress-fill' style={{ width: `${completedCount * 10}%` }} /></View>
     {question.mode === 'find' ? <>
       <View className='prompt card'><Text className='prompt-label'>Listen, then find this word</Text><Text className='prompt-word'>{item.word}</Text>
-        <Button className='button' onClick={() => { setAudioMessage('Loading audio…'); void playPronunciation(item.id).then(() => setAudioMessage('Playing…')).catch(error => setAudioMessage(error instanceof Error ? error.message : 'Audio unavailable.')); }}>🔊 Play pronunciation</Button>
+        <Button className='button' onClick={() => { setAudioMessage('Loading audio…'); void playPronunciation(item.id, error => {
+          setAudioMessage(`播放中断，请重试或检查设备音量。${error.message}`);
+        }).then(() => setAudioMessage('Playing…')).catch(error => {
+          const detail = error instanceof Error ? error.message : 'Audio unavailable.';
+          setAudioMessage(`无法播放发音，请稍后重试。${detail}`);
+        }); }}>🔊 Play pronunciation</Button>
         {audioMessage ? <Text className='muted'>{audioMessage}</Text> : null}<Text className='muted'>请根据发音在图片中点击对应物品。</Text></View>
       <SceneCanvas discovered={[]} targetId={question.answers.length >= 2 ? question.vocabularyId : undefined} onSelect={id => submit(id, 'hotspot')} />
     </> : <>

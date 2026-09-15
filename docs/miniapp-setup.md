@@ -47,7 +47,7 @@
 
 - `user-service`：登录、资料、拉取、合并和同步进度
 - `speech-recognize`：录音文件转写；未配置 ASR 时明确返回 `ASR_NOT_CONFIGURED`
-- `speech-synthesize`：为 Listen & Find 生成并缓存 Kitchen 发音；未配置时使用可见文字提示
+- `speech-synthesize`：读取并返回随云函数部署的 10 个 Kitchen 标准英语 WAV 发音；不需要 TTS 密钥
 - `admin-stats-http`：网页版管理员统计的 HTTPS 网关函数
 
 也可以使用 CloudBase CLI 部署。部署前必须选择正确环境，切勿在命令或配置文件中硬编码密钥。
@@ -85,7 +85,7 @@
 
 函数使用浏览器提交的当前 Supabase access token 向 Supabase Auth 验证用户，再检查服务端 `admins` 集合。修改 localStorage、隐藏按钮或伪造前端字段不能取得管理员权限。返回值不包含 OpenID、session key、token 或邮箱。
 
-## 7. 配置腾讯云语音识别与发音
+## 7. 配置腾讯云语音识别
 
 录音 UI、1.2 秒最短说话保护、6 秒自动停止、Listening/Processing 状态、权限错误和文字输入替代路径均已实现。真正转写需要开通[腾讯云一句话识别](https://cloud.tencent.com/document/product/1093/35646)。
 
@@ -95,10 +95,10 @@
 - `TENCENT_SECRET_KEY`
 - `TENCENT_ASR_PROJECT_ID`
 - `TENCENT_ASR_REGION`（默认 `ap-shanghai`）
-- `TENCENT_TTS_PROJECT_ID`（可选，默认 `0`）
-- `TENCENT_TTS_REGION`（默认 `ap-shanghai`）
 
-SecretId/SecretKey 可同时用于已授权的 ASR 与 TTS API，但账号必须先分别开通[一句话识别](https://cloud.tencent.com/document/product/1093/35646)和[基础语音合成](https://cloud.tencent.com/document/api/1073/37995)。这些值不得写进 `.env`、小程序代码、GitHub Variables 或构建产物。建议创建最小权限的子账号密钥并定期轮换。未配置时函数不会返回假识别结果；页面会明确提示使用可见单词或文字输入，录音失败、无声和网络错误都不计为答错。
+SecretId/SecretKey 仅用于语音回答识别，不用于 `Play pronunciation`。这些值不得写进 `.env`、小程序代码、GitHub Variables 或构建产物。建议创建最小权限的子账号密钥并定期轮换。未配置时函数不会返回假识别结果；页面会明确提示使用文字输入，录音失败、无声和网络错误都不计为答错。
+
+`Play pronunciation` 使用 `speech-synthesize/audio/` 中随云函数部署的固定 WAV 文件。重新上传云函数时必须选择“上传并部署：云端安装依赖”，确保 `audio/` 目录一并上传；该播放功能不要求开通腾讯云语音合成，也不要求配置 TTS API Key。
 
 ## 8. 安装、构建与导入微信开发者工具
 
