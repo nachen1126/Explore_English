@@ -1,7 +1,7 @@
 'use strict';
 const cloud = require('wx-server-sdk');
 const { safeUserId, ownedDocumentId } = require('./identity');
-const { SCENE_ID, VOCABULARY_IDS, vocabulary, object, finite, cleanAttempt, attemptStats } = require('./challenge-schema');
+const { sceneVocabulary, object, finite, cleanAttempt, attemptStats } = require('./challenge-schema');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
@@ -37,17 +37,18 @@ async function sync(userId, incoming) {
     throw new Error('INVALID_SNAPSHOT');
   }
   const current = await pull(userId);
-  const submittedProgress = incoming.progress[SCENE_ID];
-  if (submittedProgress) {
+  for (const [sceneId, submittedProgress] of Object.entries(incoming.progress)) {
+    const vocabularyIds = sceneVocabulary.get(sceneId);
+    if (!vocabularyIds) throw new Error('INVALID_SCENE');
     if (!object(submittedProgress) || !Array.isArray(submittedProgress.discoveredVocabularyIds)) throw new Error('INVALID_PROGRESS');
     const discovered = [...new Set([
-      ...(current.progress[SCENE_ID]?.discoveredVocabularyIds ?? []),
+      ...(current.progress[sceneId]?.discoveredVocabularyIds ?? []),
       ...submittedProgress.discoveredVocabularyIds,
-    ])].filter(id => typeof id === 'string' && vocabulary.has(id));
-    const updatedAt = Math.max(current.progress[SCENE_ID]?.updatedAt ?? 0, finite(submittedProgress.updatedAt) ? submittedProgress.updatedAt : 0);
-    await db.collection('sceneProgress').doc(ownedDocumentId(userId, SCENE_ID)).set({ data: {
-      userId, sceneId: SCENE_ID, discoveredVocabularyIds: discovered,
-      completed: discovered.length === VOCABULARY_IDS.length, updatedAt, schemaVersion: 1,
+    ])].filter(id => typeof id === 'string' && vocabularyIds.includes(id));
+    const updatedAt = Math.max(current.progress[sceneId]?.updatedAt ?? 0, finite(submittedProgress.updatedAt) ? submittedProgress.updatedAt : 0);
+    await db.collection('sceneProgress').doc(ownedDocumentId(userId, sceneId)).set({ data: {
+      userId, sceneId, discoveredVocabularyIds: discovered,
+      completed: discovered.length === vocabularyIds.length, updatedAt, schemaVersion: 1,
     } });
   }
   for (const value of Object.values(incoming.attempts)) {
@@ -61,8 +62,9 @@ async function sync(userId, incoming) {
       userId, ...selected, ...attemptStats(selected),
     } });
   }
-  const progressActivity = submittedProgress && Array.isArray(submittedProgress.discoveredVocabularyIds)
-    && submittedProgress.discoveredVocabularyIds.length ? submittedProgress.updatedAt : 0;
+  const progressActivity = Object.values(incoming.progress).reduce((latest, progress) => object(progress)
+    && Array.isArray(progress.discoveredVocabularyIds) && progress.discoveredVocabularyIds.length
+    ? Math.max(latest, finite(progress.updatedAt) ? progress.updatedAt : 0) : latest, 0);
   const attemptActivity = Object.values(incoming.attempts).reduce((latest, attempt) => {
     if (!object(attempt) || !Array.isArray(attempt.questions)) return latest;
     return Math.max(latest, ...attempt.questions.flatMap(question => Array.isArray(question.answers)

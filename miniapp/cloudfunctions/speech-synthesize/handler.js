@@ -11,10 +11,10 @@ async function handlePronunciation(event = {}) {
     return ok({
       audioBase64: audio.toString('base64'),
       format: 'wav',
-      cacheKey: 'kitchen-standard-en-v1',
+      cacheKey: 'all-scenes-standard-en-v2',
     });
   } catch (error) {
-    if (error.message === 'INVALID_WORD') return fail('INVALID_WORD', 'Unknown Kitchen vocabulary ID.');
+    if (error.message === 'INVALID_WORD') return fail('INVALID_WORD', 'Unknown published vocabulary ID.');
     console.error('pronunciation asset failed', { vocabularyId: event.vocabularyId, error: error.message });
     return fail('AUDIO_ASSET_ERROR', 'The pronunciation audio could not be loaded.');
   }

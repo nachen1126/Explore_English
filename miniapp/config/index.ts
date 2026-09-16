@@ -17,8 +17,8 @@ export default defineConfig({
   },
   copy: {
     patterns: [{
-      from: path.resolve(__dirname, '../../public/scenes/kitchen-cooking.webp'),
-      to: path.resolve(__dirname, '../dist/assets/kitchen-cooking.webp'),
+      from: path.resolve(__dirname, '../assets/scenes'),
+      to: path.resolve(__dirname, '../dist/assets/scenes'),
     }],
     options: {},
   },

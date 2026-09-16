@@ -1,6 +1,6 @@
 # Explore English 微信小程序 MVP 配置
 
-本仓库保留原有 Vite 网页应用，并在 `miniapp/` 中提供独立的 Taro 4 微信小程序。第一阶段只发布 `Food & Dining → Kitchen · Cooking`。`packages/shared/` 是网页与小程序共同使用的纯 TypeScript 数据和逻辑，不包含 DOM、Web Speech API、localStorage 或 React 组件。
+本仓库保留原有 Vite 网页应用，并在 `miniapp/` 中提供独立的 Taro 4 微信小程序。小程序目录已同步网页版全部 13 个正式场景；完整清单见 `docs/miniapp-scene-migration.md`。`packages/shared/` 是网页与小程序共同使用的纯 TypeScript 数据和逻辑，不包含 DOM、Web Speech API、localStorage 或 React 组件。
 
 ## 1. 申请微信小程序 AppID
 
@@ -47,7 +47,7 @@
 
 - `user-service`：登录、资料、拉取、合并和同步进度，并验证完整挑战、弱词练习及三次答错后的答案提示记录
 - `speech-recognize`：录音文件转写；未配置 ASR 时明确返回 `ASR_NOT_CONFIGURED`
-- `speech-synthesize`：读取并返回随云函数部署的 10 个 Kitchen 标准英语 WAV 发音；不需要 TTS 密钥
+- `speech-synthesize`：读取并返回随云函数部署的 130 个正式场景标准英语 WAV 发音；不需要 TTS 密钥
 - `admin-stats-http`：网页版管理员统计的 HTTPS 网关函数
 
 也可以使用 CloudBase CLI 部署。部署前必须选择正确环境，切勿在命令或配置文件中硬编码密钥。
@@ -87,21 +87,9 @@
 
 函数使用浏览器提交的当前 Supabase access token 向 Supabase Auth 验证用户，再检查服务端 `admins` 集合。修改 localStorage、隐藏按钮或伪造前端字段不能取得管理员权限。返回值不包含 OpenID、session key、token 或邮箱。
 
-## 7. 配置腾讯云语音识别
+## 7. 语音识别暂缓
 
-语音回答现在是单次点击流程：点击“语音回答”后立即录音，约 3.6 秒后自动停止并识别，页面不再显示 Stop 按钮。微信 `RecorderManager` 的实时分帧是 MP3 编码数据，不能稳定地当作 PCM 音量使用，所以本版不做容易误判的伪 VAD，而采用稳定的短时定长自动录音。无语音、录音错误、网络错误和 ASR 错误都不会提交答案或计为答错。
-
-真正转写需要开通[腾讯云一句话识别](https://cloud.tencent.com/document/product/1093/35646)。请按以下步骤操作：
-
-1. 打开腾讯云控制台，搜索“语音识别”，进入后点击“立即开通”。
-2. 在腾讯云“访问管理 → 用户列表 → 新建用户”创建一个仅用于语音识别的子账号，给它授权预设策略 `QcloudASRFullAccess`，再为它创建 API 密钥。这项策略只针对 ASR 产品；不要使用主账号密钥。
-3. 打开 CloudBase 控制台，选择环境 `cloud1-d6gzm9ky0f3cabd8d`。
-4. 左侧点“云函数”，点击 `speech-recognize`，进入“函数配置”。
-5. 在“环境变量”中点“编辑”，必须新增 `TENCENT_SECRET_ID` 和 `TENCENT_SECRET_KEY`，值分别填上一步创建的 SecretId 和 SecretKey，不要加引号。同一页把“执行超时时间”设为 20 秒，避免冷启动时在识别返回前超时。
-6. `TENCENT_ASR_PROJECT_ID` 可选；没有单独建立 ASR 项目时可不填，云函数会使用默认项目 `0`。`TENCENT_ASR_REGION` 也可选，不填时使用 `ap-shanghai`。
-7. 保存环境变量。因为本次也修改了云函数代码，还要回到微信开发者工具，右键 `cloudfunctions/speech-recognize`，选择“上传并部署：云端安装依赖”。
-
-SecretId/SecretKey 仅用于语音回答识别，不用于“播放发音”。这些值不得写进 `.env`、小程序代码、GitHub Variables 或构建产物。未配置时函数不会返回假识别结果。
+付费腾讯云 ASR 当前暂停接入，不需要配置 `TENCENT_SECRET_ID`、`TENCENT_SECRET_KEY`，也不需要部署 `speech-recognize`。小程序会把语音回答按钮明确显示为“语音回答暂未开放”，文字输入可以独立完成全部挑战；现有录音与云函数代码保留供以后启用，但不会返回假的识别结果。
 
 `Play pronunciation` 使用 `speech-synthesize/audio/` 中随云函数部署的固定 WAV 文件。重新上传云函数时必须选择“上传并部署：云端安装依赖”，确保 `audio/` 目录一并上传；该播放功能不要求开通腾讯云语音合成，也不要求配置 TTS API Key。
 
@@ -129,7 +117,7 @@ pnpm run build:weapp
 ## 9. 模拟器、预览与真机调试
 
 1. 在开发者工具分别选择常见 iPhone、Android 和平板尺寸。
-2. 进入 Kitchen，逐一点击 10 个物品，确认图片完整显示、热点随 3:2 图片缩放、对号位于对应热点内部右上角。
+2. 按 `docs/miniapp-scene-migration.md` 逐个进入 13 个场景，逐一点击每个场景的 10 个物品，确认图片完整显示、热点随 3:2 图片缩放、对号位于对应热点内部右上角。
 3. 完成 5 道 Listen & Find 与 5 道 What is this，故意让一题首答错误后改对，确认最终最高为 9/10。
 4. 关闭并重新打开小程序，确认场景进度和结果仍存在。
 5. 点击“预览”生成二维码，用已加入开发成员列表的微信扫码。

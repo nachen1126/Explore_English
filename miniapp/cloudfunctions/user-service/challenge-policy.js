@@ -1,17 +1,9 @@
 'use strict';
+const catalog = require('./catalog.generated.json');
 
-const acceptedAnswers = {
-  'kitchen-fridge': ['fridge', 'fridges', 'refrigerator', 'refrigerators'],
-  'kitchen-sink': ['sink', 'sinks', 'kitchen sink'],
-  'kitchen-oven': ['oven', 'ovens'],
-  'kitchen-hob': ['hob', 'hobs', 'stovetop', 'stove top', 'cooktop'],
-  'kitchen-kettle': ['kettle', 'kettles', 'electric kettle'],
-  'kitchen-pan': ['pan', 'pans', 'frying pan', 'frying pans'],
-  'kitchen-chopping-board': ['chopping board', 'chopping boards', 'cutting board', 'cutting boards'],
-  'kitchen-cupboard': ['cupboard', 'cupboards', 'cabinet', 'cabinets', 'wall cupboard', 'kitchen cupboard'],
-  'kitchen-spatula': ['spatula', 'spatulas', 'turner', 'fish slice'],
-  'kitchen-microwave': ['microwave', 'microwaves', 'microwave oven'],
-};
+const acceptedAnswers = Object.fromEntries(Object.values(catalog.vocabulary).map(item => [
+  item.id, [item.word, ...(item.acceptedAnswers || [])],
+]));
 
 const normalizeAnswer = answer => answer.normalize('NFKC').toLowerCase()
   .replace(/[’‘]/g, "'")

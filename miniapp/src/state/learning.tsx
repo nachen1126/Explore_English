@@ -1,10 +1,11 @@
 import Taro, { useDidShow } from '@tarojs/taro';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import {
-  createChallenge, discoverVocabulary, kitchenScene, mergeLearningSnapshots,
+  createChallenge, discoverVocabulary, mergeLearningSnapshots,
   recordChallengeAnswer, revealChallengeAnswer, saveAttempt, weakVocabularyIds,
   type AnswerRecord, type ChallengeAttempt, type LearningSnapshot,
 } from '@shared';
+import { miniappSceneById, miniappScenes } from '../data/catalog';
 import {
   pullCloudSnapshot, syncCloudSnapshot, updateCloudProfile, wechatLogin, type MiniappUser,
 } from '../services/cloud';
@@ -25,9 +26,9 @@ interface LearningContextValue {
   login(): Promise<void>;
   logout(): void;
   updateProfile(nickname: string | null, avatar: string | null): Promise<void>;
-  discover(vocabularyId: string): void;
-  restartScene(): void;
-  createAttempt(kind?: ChallengeAttempt['kind'], vocabularyIds?: string[]): ChallengeAttempt;
+  discover(sceneId: string, vocabularyId: string): void;
+  restartScene(sceneId: string): void;
+  createAttempt(sceneId: string, kind?: ChallengeAttempt['kind'], vocabularyIds?: string[]): ChallengeAttempt;
   answer(attemptId: string, questionId: string, record: AnswerRecord): ChallengeAttempt | null;
   reveal(attemptId: string, questionId: string): ChallengeAttempt | null;
   retrySync(): Promise<void>;
@@ -96,7 +97,7 @@ export function LearningProvider({ children }: PropsWithChildren) {
           confirmText: '合并', cancelText: '仅用云端',
         });
         if (sessionVersion.current !== version) return;
-        if (decision.confirm) next = mergeLearningSnapshots(local, cloud, [kitchenScene]);
+        if (decision.confirm) next = mergeLearningSnapshots(local, cloud, miniappScenes);
         taroStorage.set(mergeDecisionKey, true);
       }
       setUser(nextUser); setGuest(false); taroStorage.set(AUTH_PREFERENCE_KEY, 'wechat');
@@ -166,17 +167,23 @@ export function LearningProvider({ children }: PropsWithChildren) {
         throw error;
       }
     },
-    discover(vocabularyId) { persist(discoverVocabulary(snapshotRef.current, kitchenScene, vocabularyId, Date.now())); },
-    restartScene() {
+    discover(sceneId, vocabularyId) {
+      const scene = miniappSceneById[sceneId];
+      if (scene) persist(discoverVocabulary(snapshotRef.current, scene, vocabularyId, Date.now()));
+    },
+    restartScene(sceneId) {
       const next: LearningSnapshot = { ...snapshotRef.current, progress: { ...snapshotRef.current.progress } };
-      delete next.progress[kitchenScene.id];
+      delete next.progress[sceneId];
       persist(next);
     },
-    createAttempt(kind = 'full', vocabularyIds) {
+    createAttempt(sceneId, kind = 'full', vocabularyIds) {
+      const scene = miniappSceneById[sceneId];
+      if (!scene) throw new Error('无法为未知场景创建挑战。');
       const selected = kind === 'weak'
         ? (vocabularyIds ?? weakVocabularyIds(Object.values(snapshotRef.current.attempts)))
-        : kitchenScene.vocabularyIds;
-      const attempt = createChallenge(kitchenScene, uniqueAttemptId(), Date.now(), Math.random, kind, selected);
+        : scene.vocabularyIds;
+      const sceneSelection = selected.filter(id => scene.vocabularyIds.includes(id));
+      const attempt = createChallenge(scene, uniqueAttemptId(), Date.now(), Math.random, kind, sceneSelection);
       persist(saveAttempt(snapshotRef.current, attempt)); return attempt;
     },
     answer(attemptId, questionId, record) {

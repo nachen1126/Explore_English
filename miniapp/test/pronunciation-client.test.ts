@@ -64,4 +64,15 @@ describe('mini-program pronunciation playback', () => {
     expect(mocks.taro.cloud.callFunction).not.toHaveBeenCalled();
     expect(mocks.fileSystem.writeFile).not.toHaveBeenCalled();
   });
+
+  it('stops the active audio before a rapid replay starts from the beginning', async () => {
+    mocks.fileSystem.access.mockImplementation((options: { success(): void }) => options.success());
+    const { playPronunciation } = await import('../src/services/cloud');
+    await playPronunciation('kitchen-oven');
+    const stopCount = mocks.audio.stop.mock.calls.length;
+    const destroyCount = mocks.audio.destroy.mock.calls.length;
+    await playPronunciation('kitchen-oven');
+    expect(mocks.audio.stop.mock.calls.length).toBeGreaterThan(stopCount);
+    expect(mocks.audio.destroy.mock.calls.length).toBeGreaterThan(destroyCount);
+  });
 });

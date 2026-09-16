@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "packageManager": "pnpm@11.19.0",
   "scripts": {
+    "sync:scenes": "node scripts/sync-web-scenes.mjs",
+    "prepare:scene-assets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-scene-assets.ps1",
+    "prepare:pronunciation": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-pronunciation-assets.ps1",
     "predev:weapp": "tsc -p ../packages/shared/tsconfig.json",
     "dev:weapp": "taro build --type weapp --watch",
     "prebuild:weapp": "tsc -p ../packages/shared/tsconfig.json",

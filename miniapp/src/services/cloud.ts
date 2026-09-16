@@ -13,7 +13,7 @@ export interface MiniappUser {
 interface ServiceResult<T> { ok: boolean; data?: T; error?: string; message?: string }
 interface PronunciationResult { audioBase64: string; format: 'wav'; cacheKey: string }
 const environmentId = process.env.TARO_APP_CLOUDBASE_ENV?.trim() ?? '';
-const pronunciationCacheKey = 'kitchen-standard-en-v1';
+const pronunciationCacheKey = 'all-scenes-standard-en-v2';
 let activePronunciation: Taro.InnerAudioContext | null = null;
 let pronunciationRequestSequence = 0;
 
@@ -114,8 +114,15 @@ export async function recognizeRecording(filePath: string, recognitionId: string
   }
 }
 
-export async function playPronunciation(vocabularyId: string, onPlaybackError?: (error: Error) => void) {
+export async function playPronunciation(
+  vocabularyId: string,
+  onPlaybackError?: (error: Error) => void,
+  onPlaybackEnded?: () => void,
+) {
   if (!isCloudConfigured()) throw new Error('播放发音需要先配置云开发环境。');
+  // Replays must replace audio immediately, including while an earlier request
+  // is still loading, so two words can never overlap.
+  stopPronunciation();
   const requestSequence = ++pronunciationRequestSequence;
   try {
     const safeVocabularyId = vocabularyId.replace(/[^a-z0-9-]/gi, '');
@@ -151,7 +158,11 @@ export async function playPronunciation(vocabularyId: string, onPlaybackError?: 
     await new Promise<void>((resolve, reject) => {
       let started = false;
       audio.onPlay(() => { started = true; resolve(); });
-      audio.onEnded(() => { audio.destroy(); if (activePronunciation === audio) activePronunciation = null; });
+      audio.onEnded(() => {
+        audio.destroy();
+        if (activePronunciation === audio) activePronunciation = null;
+        onPlaybackEnded?.();
+      });
       audio.onError(result => {
         const error = new Error(`音频播放失败${result.errCode ? ` (${result.errCode})` : ''}：${result.errMsg || '未知错误'}`);
         console.error('[Explore English][Audio] pronunciation playback failed.', result);

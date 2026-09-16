@@ -1,15 +1,17 @@
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
-import { kitchenScene } from '@shared';
+import { miniappScenes, miniappVocabulary } from '../src/data/catalog';
 
 const require = createRequire(import.meta.url);
 const { getBundledPronunciation, pronunciationFiles } = require('../cloudfunctions/speech-synthesize/audio-catalog.js');
 const { handlePronunciation } = require('../cloudfunctions/speech-synthesize/handler.js');
 
-describe('bundled Kitchen pronunciation audio', () => {
-  it('contains a valid WAV asset for every Kitchen vocabulary ID', () => {
-    expect(Object.keys(pronunciationFiles).sort()).toEqual([...kitchenScene.vocabularyIds].sort());
-    for (const vocabularyId of kitchenScene.vocabularyIds) {
+describe('bundled published-scene pronunciation audio', () => {
+  it('contains a valid WAV asset for all 130 published vocabulary IDs', () => {
+    const publishedIds = miniappScenes.flatMap(scene => scene.vocabularyIds);
+    expect(publishedIds).toHaveLength(130);
+    expect(Object.keys(pronunciationFiles).sort()).toEqual([...publishedIds].sort());
+    for (const vocabularyId of publishedIds) {
       const { audio } = getBundledPronunciation(vocabularyId) as { audio: Buffer };
       expect(audio.subarray(0, 4).toString('ascii')).toBe('RIFF');
       expect(audio.subarray(8, 12).toString('ascii')).toBe('WAVE');
@@ -21,7 +23,7 @@ describe('bundled Kitchen pronunciation audio', () => {
     }
   });
 
-  it('rejects IDs outside the fixed Kitchen allow-list', () => {
+  it('rejects IDs outside the generated published-vocabulary allow-list', () => {
     expect(() => getBundledPronunciation('kitchen-not-real')).toThrow('INVALID_WORD');
   });
 
@@ -30,6 +32,10 @@ describe('bundled Kitchen pronunciation audio', () => {
     expect(response).toMatchObject({ ok: true, data: { format: 'wav' } });
     const decoded = Buffer.from(response.data.audioBase64, 'base64');
     expect(decoded.subarray(0, 4).toString('ascii')).toBe('RIFF');
-    expect(response.data.cacheKey).toContain('kitchen-standard-en-v1');
+    expect(response.data.cacheKey).toContain('all-scenes-standard-en-v2');
+  });
+
+  it('covers the same IDs as the mini-program vocabulary catalog', () => {
+    expect(new Set(Object.keys(pronunciationFiles))).toEqual(new Set(miniappVocabulary.map(item => item.id)));
   });
 });

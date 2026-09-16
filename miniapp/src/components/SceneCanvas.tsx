@@ -1,10 +1,14 @@
 import { Button, Image, Text, View } from '@tarojs/components';
 import { useMemo, useState } from 'react';
-import { hotspotStyle, kitchenScene, type Hotspot } from '@shared';
+import { hotspotStyle, type Hotspot, type Scene } from '@shared';
+import { foundMarkerStyle } from '../services/hotspot-marker';
 
 interface Props {
+  scene: Scene;
+  imageSrc: string;
   discovered?: string[];
   targetId?: string;
+  disabled?: boolean;
   onSelect?(vocabularyId: string): void;
 }
 
@@ -17,23 +21,23 @@ function clipPath(hotspot: Hotspot) {
   }).join(',')})`;
 }
 
-export function SceneCanvas({ discovered = [], targetId, onSelect }: Props) {
+export function SceneCanvas({ scene, imageSrc, discovered = [], targetId, disabled = false, onSelect }: Props) {
   const [imageState, setImageState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [reloadKey, setReloadKey] = useState(0);
   const markerRegions = useMemo(() => {
     const selected = new Map<string, number>();
-    kitchenScene.hotspots.forEach((hotspot, index) => {
+    scene.hotspots.forEach((hotspot, index) => {
       const current = selected.get(hotspot.vocabularyId);
-      if (current === undefined || hotspot.width * hotspot.height > kitchenScene.hotspots[current].width * kitchenScene.hotspots[current].height) {
+      if (current === undefined || hotspot.width * hotspot.height > scene.hotspots[current].width * scene.hotspots[current].height) {
         selected.set(hotspot.vocabularyId, index);
       }
     });
     return selected;
-  }, []);
-  return <View className='scene-frame' data-scene-id={kitchenScene.id}>
-    <Image key={reloadKey} className='scene-image' src='/assets/kitchen-cooking.webp' mode='aspectFit'
+  }, [scene]);
+  return <View className='scene-frame' data-scene-id={scene.id} style={{ aspectRatio: `${scene.imageWidth} / ${scene.imageHeight}` }}>
+    <Image key={`${scene.id}-${reloadKey}`} className='scene-image' src={imageSrc} mode='aspectFit'
       onLoad={() => setImageState('ready')} onError={error => {
-        console.error('[Explore English][Scene] Kitchen image failed to load.', error);
+        console.error(`[Explore English][Scene] ${scene.id} image failed to load.`, error);
         setImageState('error');
       }} />
     {imageState !== 'ready' ? <View className='image-status'>
@@ -43,17 +47,19 @@ export function SceneCanvas({ discovered = [], targetId, onSelect }: Props) {
       </>}
     </View> : null}
     <View className='hotspot-layer'>
-      {kitchenScene.hotspots.map((hotspot, index) => {
+      {scene.hotspots.map((hotspot, index) => {
         const found = discovered.includes(hotspot.vocabularyId);
         return <View key={`${hotspot.vocabularyId}-${index}`} className='hotspot-region'
           data-vocabulary-id={hotspot.vocabularyId} style={hotspotStyle(hotspot)}>
-          <View className={`hotspot ${targetId === hotspot.vocabularyId ? 'target' : ''} ${onSelect ? '' : 'noninteractive'}`}
-            data-hotspot-id={`${kitchenScene.id}:${hotspot.vocabularyId}:${index}`}
+          <View className={`hotspot ${targetId === hotspot.vocabularyId ? 'target' : ''} ${onSelect && !disabled ? '' : 'noninteractive'}`}
+            data-hotspot-id={`${scene.id}:${hotspot.vocabularyId}:${index}`}
             data-vocabulary-id={hotspot.vocabularyId}
             style={{ clipPath: clipPath(hotspot), WebkitClipPath: clipPath(hotspot) }}
-            onClick={onSelect ? () => { if (imageState === 'ready') onSelect(hotspot.vocabularyId); } : undefined} />
+            onClick={onSelect && !disabled ? () => { if (imageState === 'ready') onSelect(hotspot.vocabularyId); } : undefined} />
           {found && markerRegions.get(hotspot.vocabularyId) === index
-            ? <View className='found-marker' data-vocabulary-id={hotspot.vocabularyId}><Text>✓</Text></View> : null}
+            ? <View className='found-marker' data-vocabulary-id={hotspot.vocabularyId} style={foundMarkerStyle(scene, hotspot)}>
+              <View className='found-marker-tick' />
+            </View> : null}
         </View>;
       })}
     </View>

@@ -2,19 +2,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const catalog = require('./catalog.generated.json');
 
-const pronunciationFiles = Object.freeze({
-  'kitchen-fridge': 'kitchen-fridge.wav',
-  'kitchen-sink': 'kitchen-sink.wav',
-  'kitchen-oven': 'kitchen-oven.wav',
-  'kitchen-hob': 'kitchen-hob.wav',
-  'kitchen-kettle': 'kitchen-kettle.wav',
-  'kitchen-pan': 'kitchen-pan.wav',
-  'kitchen-chopping-board': 'kitchen-chopping-board.wav',
-  'kitchen-cupboard': 'kitchen-cupboard.wav',
-  'kitchen-spatula': 'kitchen-spatula.wav',
-  'kitchen-microwave': 'kitchen-microwave.wav',
-});
+const pronunciationFiles = Object.freeze(Object.fromEntries(
+  Object.keys(catalog.vocabulary).map(vocabularyId => [vocabularyId, `${vocabularyId}.wav`]),
+));
 
 function getBundledPronunciation(vocabularyId) {
   const fileName = pronunciationFiles[vocabularyId];

@@ -1,10 +1,16 @@
 .category-page text { display: block; }
 .page-actions { margin-bottom: 22px; color: #285c4d; font-size: 24px; font-weight: 700; }
 .scene-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 26px; }
+.scene-tabs.two-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .scene-tab { display: flex; align-items: center; justify-content: center; min-height: 72px; margin: 0; padding: 8px; border-radius: 14px; background: #e7eee8; color: #285c4d; font-size: 21px; line-height: 1.2; }
 .scene-tab::after { border: 0; }
 .scene-tab.active { background: #285c4d; color: white; }
 .thumbnail { width: 100%; height: 360px; border-radius: 16px; }
+.thumbnail-error { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: #e8e3d7; color: #7b351e; text-align: center; }
+.scene-list { width: 100%; }
+.scene-card { overflow: hidden; }
 .scene-title { margin-top: 22px; font-family: Georgia, serif; font-size: 42px; font-weight: 700; }
 .scene-english-name { margin-top: 6px; color: #65736d; font-size: 22px; }
+.scene-meta { display: flex; justify-content: space-between; margin-top: 14px; color: #65736d; font-size: 23px; }
+.category-english { margin: -4px 0 12px; color: #65736d; font-size: 24px; }
 .coming-soon text + text { margin-top: 10px; }

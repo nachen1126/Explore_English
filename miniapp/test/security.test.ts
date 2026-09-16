@@ -27,6 +27,18 @@ describe('CloudBase identity boundaries', () => {
     expect(answerIsCorrect('oven', 'typing', 'kitchen-oven')).toBe(true);
     expect(answerIsCorrect('fridge', 'typing', 'kitchen-oven')).toBe(false);
     expect(answerIsCorrect('kitchen-oven', 'hotspot', 'kitchen-oven')).toBe(true);
+    expect(answerIsCorrect('jellyfish', 'typing', 'underwater-jellyfish')).toBe(true);
+    expect(answerIsCorrect('underwater-jellyfish', 'hotspot', 'underwater-jellyfish')).toBe(true);
+  });
+  it('validates a full non-Kitchen scene against the generated server catalog', () => {
+    const catalog = require('../cloudfunctions/user-service/catalog.generated.json');
+    const scene = catalog.scenes.find((value: { id: string }) => value.id === 'classroom-1');
+    const questions = scene.vocabularyIds.map((vocabularyId: string, index: number) => ({
+      id: `classroom-attempt-${index}`, vocabularyId,
+      mode: index < 5 ? 'find' : 'produce', answers: [],
+    }));
+    expect(cleanAttempt({ attemptId: 'classroom-attempt', sceneId: scene.id, kind: 'full',
+      startedAt: 1, completedAt: null, questions })).toEqual(expect.objectContaining({ sceneId: 'classroom-1', questions }));
   });
   it('accepts a real weak-word attempt but still rejects an incomplete full challenge', () => {
     const question = { id: 'weak-1-0', vocabularyId: 'kitchen-oven', mode: 'produce', answers: [] };
