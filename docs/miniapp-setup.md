@@ -97,7 +97,7 @@
 2. 在腾讯云“访问管理 → 用户 → 新建子用户”创建一个仅用于语音识别的子账号，授予语音识别调用权限，再为它创建 API 密钥。不要使用主账号密钥。
 3. 打开 CloudBase 控制台，选择环境 `cloud1-d6gzm9ky0f3cabd8d`。
 4. 左侧点“云函数”，点击 `speech-recognize`，进入“函数配置”。
-5. 在“环境变量”中点“编辑”，必须新增 `TENCENT_SECRET_ID` 和 `TENCENT_SECRET_KEY`，值分别填上一步创建的 SecretId 和 SecretKey，不要加引号。
+5. 在“环境变量”中点“编辑”，必须新增 `TENCENT_SECRET_ID` 和 `TENCENT_SECRET_KEY`，值分别填上一步创建的 SecretId 和 SecretKey，不要加引号。同一页把“执行超时时间”设为 20 秒，避免冷启动时在识别返回前超时。
 6. `TENCENT_ASR_PROJECT_ID` 可选；没有单独建立 ASR 项目时可不填，云函数会使用默认项目 `0`。`TENCENT_ASR_REGION` 也可选，不填时使用 `ap-shanghai`。
 7. 保存环境变量。因为本次也修改了云函数代码，还要回到微信开发者工具，右键 `cloudfunctions/speech-recognize`，选择“上传并部署：云端安装依赖”。
 
