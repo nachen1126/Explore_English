@@ -65,7 +65,12 @@ describe('exploration interaction', () => {
     const user = userEvent.setup();
     mount('/scene/kitchen-2'); loadPicture();
     for (const id of scene.vocabularyIds) await user.click(screen.getAllByRole('button', { name: `Explore ${vocabulary[id].word}` })[0]);
-    expect(screen.getByRole('heading', { name: 'You found them all!' })).toBeVisible();
+    const completion = screen.getByRole('heading', { name: 'You found them all!' }).closest('section')!;
+    expect(completion).toBeVisible();
+    expect([...completion.querySelectorAll('.button')].map(element => element.textContent?.trim())).toEqual([
+      'Start Challenge →', 'Review Words', 'Start over',
+    ]);
+    expect(screen.queryByRole('button', { name: 'Review an object' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Review Words' })).toBeVisible();
     expect(screen.getByRole('link', { name: '← 返回本分类 · Category' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: /Start Challenge/ }));
@@ -148,8 +153,8 @@ describe('results and navigation', () => {
     const user = userEvent.setup();
     const attempt = finishAttempt();
     mount(`/result/${scene.id}/${attempt.id}`);
-    await user.click(screen.getByRole('link', { name: 'Next: Supermarket · 10 words →' }));
-    expect(screen.getByRole('heading', { name: 'Supermarket' })).toBeVisible();
+    await user.click(screen.getByRole('link', { name: 'Explore next: Supermarket →' }));
+    expect(screen.getByRole('heading', { name: /Supermarket/ })).toBeVisible();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   it('Practice Weak Words starts an attempt containing only failed words', async () => {

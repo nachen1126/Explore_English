@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getScene, scenes, vocabulary } from '../data';
+import { getScene, getSceneCategory, scenes, vocabulary } from '../data';
 import { createAttempt, isSolved, recommendNext, summarize, weakVocabulary } from '../logic';
 import { useLearning } from '../store';
 import { Layout, UnavailableScenePage } from '../components/Layout';
@@ -33,6 +33,8 @@ function Result({ scene, attempt }: { scene: Scene; attempt: ChallengeAttempt })
     .sort((a, b) => b.createdAt - a.createdAt)[0];
   const percentage = result.score === result.total ? 100 : Math.floor(result.score / result.total * 1000) / 10;
   const next = recommendNext(scene, scenes, state);
+  const category = getSceneCategory(scene)!;
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
   function start(kind: 'full' | 'weak') {
     const nextAttempt = createAttempt(scene, kind === 'weak' ? result.weak : weakVocabulary(state), kind);
     dispatch({ type: 'start', attempt: nextAttempt });
@@ -48,10 +50,13 @@ function Result({ scene, attempt }: { scene: Scene; attempt: ChallengeAttempt })
       <dl className="result-stats"><div><dt>First-attempt accuracy</dt><dd>{percentage}%</dd></div>
         <div><dt>Remembered</dt><dd>{result.remembered.length}</dd></div><div><dt>Needs practice</dt><dd>{result.weak.length}</dd></div></dl></div>
     <div className="result-actions"><button className="button primary" disabled={!result.weak.length} onClick={() => start('weak')}>Practice Weak Words</button>
+      {next ? <Link className="button primary next-scene" to={`/scene/${next.id}`}>Explore next: {next.title} →</Link>
+        : <Link className="button primary next-scene" to={`/category/${category.id}`}>Back to {category.chineseTitle}</Link>}
       <button className="button secondary" onClick={() => start('full')}>Retry Challenge</button>
-      {next && <Link className="button secondary next-scene" to={`/scene/${next.id}`}>Next: {next.title} · {next.vocabularyIds.length} words →</Link>}
+      <Link className="button secondary" to={`/review/${scene.id}`}>Review All Words</Link>
+      <button className="text-button" onClick={() => setDetailsOpen(true)}>View this attempt</button>
+      {next && <Link className="text-button" to={`/category/${category.id}`}>Back to {category.chineseTitle}</Link>}
       <Link className="text-button" to="/">Back Home</Link></div>
-    <button className="button secondary attempt-details-button" onClick={() => setDetailsOpen(true)}>View this attempt</button>
     </div>
     {result.weak.length > 0 ? <section className="weak-words"><h2>Words to revisit · {result.weak.length}</h2><p>These words will come first in your next practice.</p>
       <div className="weak-word-grid">{result.weak.map(id => <div className="weak-word" key={id}><div><strong>{vocabulary[id].word}</strong><span lang="zh-CN">{vocabulary[id].chineseMeaning}</span></div><AudioButton item={vocabulary[id]} /></div>)}</div>

@@ -135,11 +135,12 @@ export function recommendNext(scene: Scene, scenes: Scene[], state: LearningStat
   const unfinished = (candidate: Scene) => !Object.values(state.attempts).some(attempt =>
     attempt.sceneId === candidate.id && attempt.kind === 'full' && attempt.completedAt !== null);
   const categoryId = topics.find(topic => topic.id === scene.topicId)?.categoryId;
+  const sameCategory = candidates.filter(candidate => categoryId !== undefined
+    && topics.find(topic => topic.id === candidate.topicId)?.categoryId === categoryId);
   return sameTopic.find(unfinished)
-    ?? candidates.find(candidate => unfinished(candidate) && categoryId !== undefined
-      && topics.find(topic => topic.id === candidate.topicId)?.categoryId === categoryId)
-    ?? candidates.find(unfinished)
-    ?? candidates[0];
+    ?? sameCategory.find(unfinished)
+    ?? sameTopic[0]
+    ?? sameCategory[0];
 }
 
 type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;

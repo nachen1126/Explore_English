@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
-import { getScene, publishedScenes, scenes, vocabulary } from '../data';
+import { getScene, getSceneCategory, publishedScenes, scenes, vocabulary } from '../data';
 import { createAttempt, emptyState, learningReducer, loadState, recommendNext, saveState, summarize } from '../logic';
 import { resultFeedback } from '../result-feedback';
 
@@ -109,18 +109,23 @@ describe('multiple visible regions of one object', () => {
 });
 
 describe('recommendation hierarchy and separately saved results', () => {
-  it('goes to a real next topic scene, then the same category, then other categories', () => {
+  it('goes to a real next topic scene, then stays inside the same category', () => {
     const state = emptyState();
     expect(recommendNext(kitchen, scenes, state)?.id).toBe('supermarket-2');
     const sameCategory = { ...kitchen, id: 'test-food', topicId: 'restaurant', image: 'scenes/test-food.webp' };
     expect(recommendNext(kitchen, [kitchen, sameCategory, getScene('airport-2')!], state)?.id).toBe('test-food');
   });
-  it('every published scene recommendation resolves to a real, different image and route', () => {
+  it('every recommendation stays in the current category and categories with one scene stop there', () => {
     publishedScenes.forEach(scene => {
       const next = recommendNext(scene, scenes, emptyState());
-      expect(next).toBeDefined(); expect(getScene(next!.id)).toBe(next);
-      expect(next!.id).not.toBe(scene.id); expect(next!.image).not.toBe(scene.image);
-      expect(next!.vocabularyIds).toHaveLength(10);
+      const sameCategory = publishedScenes.filter(candidate => getSceneCategory(candidate)?.id === getSceneCategory(scene)?.id);
+      if (sameCategory.length === 1) expect(next).toBeUndefined();
+      else {
+        expect(next).toBeDefined(); expect(getScene(next!.id)).toBe(next);
+        expect(getSceneCategory(next!)?.id).toBe(getSceneCategory(scene)?.id);
+        expect(next!.id).not.toBe(scene.id); expect(next!.image).not.toBe(scene.image);
+        expect(next!.vocabularyIds).toHaveLength(10);
+      }
     });
   });
   it('retains the original 8/10 full result after a perfect 2-word practice and after reload', async () => {
@@ -154,8 +159,8 @@ describe('recommendation hierarchy and separately saved results', () => {
   it('shows the most recently visited real scene and no home pagination or development labels', () => {
     saveState({...emptyState(),scenes:{'gym-1':{explored:['gym-chair'],lastVisited:30},'kitchen-2':{explored:['kitchen-fridge'],lastVisited:10}}});
     mount('/');
-    expect(screen.getByRole('link',{name:'Continue Kitchen · Cooking →'})).toHaveAttribute('href','/scene/kitchen-2');
-    expect(within(screen.getByRole('region',{name:/Ready to explore/})).getAllByRole('img')).toHaveLength(7);
+    expect(screen.getByRole('link',{name:'Continue Kitchen · Cooking'})).toHaveAttribute('href','/scene/kitchen-2');
+    expect(within(screen.getByRole('region',{name:/All categories/})).queryAllByRole('img')).toHaveLength(0);
     expect(screen.queryByRole('button',{name:'Next page'})).not.toBeInTheDocument();
     expect(screen.queryByText(/Development artwork/)).not.toBeInTheDocument();
   });

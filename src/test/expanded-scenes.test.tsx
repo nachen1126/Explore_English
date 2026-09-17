@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { SceneArt } from '../components/SceneArt';
-import { getCategoryScenes, getScene, publishedScenes, scenes, vocabulary } from '../data';
+import { getCategoryScenes, getScene, getSceneCategory, publishedScenes, scenes, vocabulary } from '../data';
 import { createAttempt, emptyState, learningReducer, loadState, recommendNext, saveState } from '../logic';
 
 const expectedByCategory = {
@@ -89,10 +89,15 @@ describe('first scene expansion batch', () => {
     expect(recommendNext(livingRoom, scenes, state)?.id).toBe('bathroom-1');
     for (const id of expandedIds) {
       const current = getScene(id)!;
-      const next = recommendNext(current, scenes, state)!;
-      expect(next.published).toBe(true);
-      expect(next.id).not.toBe(id);
-      expect(next.image).not.toBe(current.image);
+      const next = recommendNext(current, scenes, state);
+      const categoryScenes = publishedScenes.filter(scene => getSceneCategory(scene)?.id === getSceneCategory(current)?.id);
+      if (categoryScenes.length === 1) expect(next).toBeUndefined();
+      else {
+        expect(next?.published).toBe(true);
+        expect(getSceneCategory(next!)?.id).toBe(getSceneCategory(current)?.id);
+        expect(next?.id).not.toBe(id);
+        expect(next?.image).not.toBe(current.image);
+      }
     }
   });
 

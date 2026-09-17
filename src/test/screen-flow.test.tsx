@@ -152,7 +152,7 @@ describe('paged content and result dialogs', () => {
     const links = within(screen.getByRole('main')).getAllByRole('link');
     expect(new Set(links.map(link => link.getAttribute('aria-label')))).toEqual(new Set(categories.map(category => `${category.chineseTitle} · ${category.title}`)));
     expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: /Ready to explore/ })).getAllByRole('link')).toHaveLength(7);
+    expect(within(screen.getByRole('region', { name: /All categories/ })).getAllByRole('link')).toHaveLength(7);
     expect(within(screen.getByRole('region', { name: /Coming soon/ })).getAllByRole('link')).toHaveLength(1);
   });
   it('separates learned, not-started and planned scenes without category pagination', () => {

@@ -26,14 +26,25 @@ declare global {
     webkitSpeechRecognition?: RecognitionConstructor;
   }
 }
-export function speak(text: string, onError?: () => void): boolean {
+export interface SpeechPlaybackEvents {
+  onStart?: () => void;
+  onEnd?: () => void;
+}
+
+export function speak(text: string, onError?: () => void, events: SpeechPlaybackEvents = {}): boolean {
   if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return false;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'en-GB';
   const voice = window.speechSynthesis.getVoices().find(item => item.lang.toLowerCase() === 'en-gb');
   if (voice) utterance.voice = voice;
+  utterance.onstart = () => events.onStart?.();
+  utterance.onend = () => events.onEnd?.();
   utterance.onerror = event => {
-    if (event.error !== 'canceled' && event.error !== 'interrupted') onError?.();
+    if (event.error === 'canceled' || event.error === 'interrupted') events.onEnd?.();
+    else {
+      events.onEnd?.();
+      onError?.();
+    }
   };
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);

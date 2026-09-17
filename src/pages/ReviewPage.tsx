@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getScene, vocabulary } from '../data';
 import { createAttempt, weakVocabulary } from '../logic';
@@ -14,6 +15,7 @@ export function ReviewPage() {
   const weak = weakVocabulary(state);
   const ids = [...(scene?.vocabularyIds ?? [])].sort((a, b) => Number(weak.includes(b)) - Number(weak.includes(a)));
   const pagination = usePagination(ids, useSmallScreen() ? 1 : 4);
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
   if (!scene) return <UnavailableScenePage sceneId={sceneId} />;
   const ready = scene.vocabularyIds.every(id => state.scenes[scene.id]?.explored.includes(id));
   return <Layout className="review-main" back={`/scene/${scene.id}`} backLabel="Back to scene"><section className="page-heading"><p className="eyebrow">{scene.title}</p>
