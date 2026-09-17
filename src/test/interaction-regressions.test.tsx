@@ -243,6 +243,34 @@ describe('learning Enter shortcut', () => {
 });
 
 describe('Find It automatic advancement', () => {
+  it('auto-plays each new Find It target once, reflects real playback, and keeps manual replay available', () => {
+    vi.useFakeTimers();
+    const attempt = seedAttempt(['find', 'find', 'produce']);
+    mount(`/challenge/${kitchen.id}/${attempt.id}`); loadPicture();
+
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    const firstUtterance = vi.mocked(window.speechSynthesis.speak).mock.calls[0][0];
+    expect(firstUtterance.text).toBe(vocabulary[attempt.questions[0].vocabularyId].audioText);
+    const replay = screen.getByRole('button', { name: `Play pronunciation of ${vocabulary[attempt.questions[0].vocabularyId].word}` });
+    expect(replay).toHaveTextContent('再次播放');
+    act(() => firstUtterance.onstart?.({} as SpeechSynthesisEvent));
+    expect(screen.getByText('正在播放...')).toBeVisible();
+    act(() => firstUtterance.onend?.({} as SpeechSynthesisEvent));
+    expect(screen.queryByText('正在播放...')).not.toBeInTheDocument();
+
+    fireEvent.click(targetButton(attempt.questions[1]));
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    fireEvent.click(targetButton(attempt.questions[0]));
+    act(() => vi.advanceTimersByTime(600));
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
+    const secondUtterance = vi.mocked(window.speechSynthesis.speak).mock.calls[1][0];
+    expect(secondUtterance.text).toBe(vocabulary[attempt.questions[1].vocabularyId].audioText);
+    expect(screen.queryByText('正在播放...')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: `Play pronunciation of ${vocabulary[attempt.questions[1].vocabularyId].word}` }));
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3);
+  });
+
   it('wrong clicks stay put; correct feedback locks all choices and advances exactly once after 600 ms', () => {
     vi.useFakeTimers();
     const attempt = seedAttempt(['find', 'find', 'produce']);

@@ -7,7 +7,7 @@ import { speak, useRecognition } from '../speech';
 import type { ChallengeAttempt, ChallengeQuestion, Scene } from '../types';
 import { Layout, MissingPage, UnavailableScenePage } from '../components/Layout';
 import { SceneArt } from '../components/SceneArt';
-import { AudioButton } from '../components/WordCard';
+import { AudioButton, type AudioPlaybackState } from '../components/WordCard';
 import { useChallengeEnter } from '../useChallengeEnter';
 
 export function ChallengePage() {
@@ -39,6 +39,24 @@ function ChallengeSession({ scene, attempt }: { scene: Scene; attempt: Challenge
   });
   const question = attempt.questions[index];
   const advanced = useRef<string | null>(null);
+  const spokenQuestion = useRef<string | null>(null);
+  const playbackSequence = useRef(0);
+  const [findPlayback, setFindPlayback] = useState<AudioPlaybackState>();
+  useEffect(() => {
+    if (question.mode !== 'find' || spokenQuestion.current === question.id) return;
+    spokenQuestion.current = question.id;
+    const request = ++playbackSequence.current;
+    const item = vocabulary[question.vocabularyId];
+    const updatePlayback = (patch: Partial<AudioPlaybackState>) => setFindPlayback(current => current?.request === request
+      ? { ...current, ...patch } : current);
+    setFindPlayback({ wordId: item.id, request, isPlaying: false, error: false });
+    // Browsers may block the first unprompted utterance. Keep the challenge usable
+    // and let the existing replay button provide the user-initiated retry.
+    speak(item.audioText, () => updatePlayback({ isPlaying: false }), {
+      onStart: () => updatePlayback({ isPlaying: true }),
+      onEnd: () => updatePlayback({ isPlaying: false }),
+    });
+  }, [question.id, question.mode, question.vocabularyId]);
   const next = useCallback(() => {
     if (!isSolved(question) || advanced.current === question.id) return;
     advanced.current = question.id;
@@ -47,11 +65,13 @@ function ChallengeSession({ scene, attempt }: { scene: Scene; attempt: Challenge
   }, [question, index, attempt.questions.length, attempt.id, navigate, scene.id]);
   useChallengeEnter(question, next);
   return <Layout className="challenge-main" back={`/scene/${scene.id}`} backLabel="Back to scene">
-    <QuestionPanel key={question.id} scene={scene} attempt={attempt} question={question} index={index} onNext={next} />
+    <QuestionPanel key={question.id} scene={scene} attempt={attempt} question={question} index={index}
+      findPlayback={findPlayback} onNext={next} />
   </Layout>;
 }
-function QuestionPanel({ scene, attempt, question, index, onNext }: {
-  scene: Scene; attempt: ChallengeAttempt; question: ChallengeQuestion; index: number; onNext: () => void;
+function QuestionPanel({ scene, attempt, question, index, findPlayback, onNext }: {
+  scene: Scene; attempt: ChallengeAttempt; question: ChallengeQuestion; index: number;
+  findPlayback?: AudioPlaybackState; onNext: () => void;
 }) {
   const { dispatch } = useLearning();
   const [answer, setAnswer] = useState('');
@@ -147,7 +167,7 @@ function QuestionPanel({ scene, attempt, question, index, onNext }: {
       highlight={question.mode === 'produce' || findHintActive ? item.id : undefined} hintPulse={findHintActive}
       onTap={question.mode === 'find' && !solved ? answerFind : undefined} />
       <div className="answer-panel">
-        {question.mode === 'find' ? <><h2>Listen & find</h2><AudioButton item={item} />
+        {question.mode === 'find' ? <><h2>Listen & find</h2><AudioButton item={item} playback={findPlayback} />
           {findHintAvailable && !solved && <button className="button secondary find-hint-button" disabled={findHintActive} onClick={showFindHint}>
             {findHintActive ? 'Hint showing…' : 'Show me a hint'}
           </button>}</> : <>
